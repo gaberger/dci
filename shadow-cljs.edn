@@ -1,0 +1,27 @@
+
+{:source-paths ["src" "test"]
+ :dependencies [[cljs-http "0.1.46"]
+                [martian-cljs-http "0.1.9"]
+                [prismatic/schema "1.1.10"]
+                [cider/cider-nrepl "0.16.0-SNAPSHOT"]]
+ :nrepl        {:port 8202}
+ :builds       {:main         {:target    :node-script
+                               :output-to "target/dci.js"
+                               :release   {:compiler-options {:optimizations :simple}}
+                               :main      dci.main/main!}
+                :server       {:target    :node-script
+                               :output-to "target/dci-server.js"
+                               :release   {:compiler-options {:optimizations :simple}}
+                               :main      server.dci-server/main!}
+                :server-model {:target    :node-library
+                               :output-to "target/dci-model.js"
+                               :release   {:compiler-options {:optimizations :simple}}
+                               :exports   {:IServer server.dci-model/IServer}}
+                :packet-lib   {:target           :node-library
+                               :output-to        "target/packet.js"
+                               :compiler-options {:strip-name-suffixes #{"warn"}}
+                               :exports          {:PacketServer lib.packet/PacketServer}}
+                :test         {:target    :node-test
+                               :output-to "out/packet-test.js"
+                               :ns-regexp "-test$"
+                               :autorun   true}}}

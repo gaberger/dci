@@ -1,0 +1,28 @@
+{
+  "name": "dci",
+  "version": "0.0.1",
+  "description": "",
+  "main": "dci.js",
+  "bin": "target/dci.js",
+  "scripts": {
+    "watch": "shadow-cljs watch app",
+    "compile": "shadow-cljs compile app",
+    "build": "shadow-cljs release app"
+  },
+  "keywords": [],
+  "author": "jiyinyiyong",
+  "license": "MIT",
+  "devDependencies": {
+    "shadow-cljs": "^2.8.29",
+    "source-map-support": "^0.5.10",
+    "ws": "^6.1.2"
+  },
+  "dependencies": {
+    "commander": "^2.20.0",
+    "xhr2": "^0.1.4"
+  },
+  "pkg": {
+      "scripts": "target/**/*.js",
+      "targets": ["linux","macos","win"]
+  }
+}
