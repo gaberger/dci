@@ -3,6 +3,7 @@
  :dependencies [[cljs-http "0.1.46"]
                 [martian-cljs-http "0.1.9"]
                 [prismatic/schema "1.1.10"]
+                [cljs-node-io "1.1.2"]
                 [cider/cider-nrepl "0.16.0-SNAPSHOT"]]
  :nrepl        {:port 8202}
  :builds       {:main         {:target    :node-script
@@ -21,6 +22,18 @@
                                :output-to        "target/packet.js"
                                :compiler-options {:strip-name-suffixes #{"warn"}}
                                :exports          {:PacketServer lib.packet/PacketServer}}
+                :state         {:target           :node-library
+                               :output-to        "target/state.js"
+                               :exports          {:app-state dci.state/app-state}}
+                :utils        {:target    :node-library
+                               :output-to "target/utils.js"
+                               :exports   {:dump-object       utils.core/dump-object
+                                           :update-project-id utils.core/update-project-id
+                                           :initialize-state  utils.core/initialize-state
+                                           :get-api-token     utils.core/get-api-token
+                                           :state-file        utils.core/state-file
+                                           :state-exists      utils.core/state-exists
+                                           :projectid?        utils.core/projectid?}}
                 :test         {:target    :node-test
                                :output-to "out/packet-test.js"
                                :ns-regexp "-test$"

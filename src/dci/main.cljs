@@ -1,8 +1,7 @@
 (ns dci.main
   (:require [commander]
+            [utils.core :as utils]
             [clojure.string :as str]))
-
-(def app-state (atom {:debug false}))
 
 (defn command-handler []
  (.. commander
@@ -12,5 +11,7 @@
      (parse (.-argv js/process))))
 
 (defn main! []
+  (when-not (utils/state-exists)
+    (utils/initialize-state))
    (command-handler))
 

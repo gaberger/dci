@@ -8,7 +8,8 @@
             [clojure.string :as str]
             [server.dci-model :as model :refer [IServer list-servers create-server delete-server]]
             [lib.packet :as packet :refer [PacketServer]]
-            [dci.main :refer [app-state]]))
+            [utils.core :as utils]
+            [dci.state :refer [app-state]]))
 
 (enable-console-print!)
 
@@ -46,24 +47,60 @@
                     (option "-J --json" "Output to JSON")
                     (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet")
                     )]
+
+    (.. program
+        (description "Save Project ID in State")
+        (command "save <project-id>")
+        (action (fn [project-id]
+                  (utils/update-project-id project-id)
+                  (println "Saving Projet-ID" project-id))))
+
+    (if (utils/projectid?)
+      (.. program
+          (description "List Bare Metal Cloud Servers. Requires project-id")
+          (command "list")
+          (action (fn []
+                    (let [project-id (utils/get-project-id)]
+                      (println "Using ProjectId:" project-id)
+                     (when (.-debug program) (swap! app-state assoc :debug true))
+                     (command-actions (keyword (.-provider program)) :list-servers project-id)))))
+
     (.. program
         (description "List Bare Metal Cloud Servers. Requires project-id")
         (command "list <project-id>")
         (action (fn [project-id]
                   (when (.-debug program) (swap! app-state assoc :debug true))
-                  (command-actions (keyword (.-provider program)) :list-servers project-id))))
-    (.. program
-        (command "create <project-id> <hostname> [plan] [facilities] [os]")
-        (description "Create Bare Metal Cloud Server. Requires project-id, hostname")
-        (action (fn [project-id hostname plan facilities os]
-                  (let [hostname'   (str hostname)
-                        plan'       (if plan plan "baremetal_0")
-                        facilities' (if facilities facilities ["ewr1"] )
-                        os'         (if os os "ubuntu_16_04")
-                        args {:id project-id :hostname hostname' :plan plan' :facility facilities' :operating_system os'}]
-                    (when (.-debug program) (swap! app-state assoc :debug true))
-                    (command-actions (keyword (.-provider program))
-                                                  :create-server args)))))
+                  (command-actions (keyword (.-provider program)) :list-servers project-id)))))
+
+    (if (utils/projectid?)
+         (.. program
+          (command "create <hostname> [plan] [facilities] [os]")
+          (description "Create Bare Metal Cloud Server.")
+          (action (fn [hostname plan facilities os]
+                    (let [project-id  (utils/get-project-id)
+                          hostname'   (str hostname)
+                          plan'       (or plan  "baremetal_0")
+                          facilities' (or facilities ["ewr1"] )
+                          os'         (or os "ubuntu_16_04")
+                          args        {:id       project-id  :hostname         hostname' :plan plan'
+                                       :facility facilities' :operating_system os'}]
+                      (when (.-debug program) (swap! app-state assoc :debug true))
+                      (command-actions (keyword (.-provider program))
+                                       :create-server args)))))
+         (.. program
+            (command "create <project-id> <hostname> [plan] [facilities] [os]")
+            (description "Create Bare Metal Cloud Server.")
+            (action (fn [project-id hostname plan facilities os]
+                      (let [hostname'   (str hostname)
+                            plan'       (or plan  "baremetal_0")
+                            facilities' (or facilities ["ewr1"] )
+                            os'         (or os "ubuntu_16_04")
+                            args        {:id       project-id  :hostname         hostname' :plan plan'
+                                         :facility facilities' :operating_system os'}]
+                       (when (.-debug program) (swap! app-state assoc :debug true))
+                                         (command-actions (keyword (.-provider program))
+                                         :create-server args))))))
+
     (.. program
         (command "delete <device-id>")
         (description "Delete Bare Metal Cloud Server. Requires device-id")

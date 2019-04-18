@@ -8,7 +8,7 @@
             [clojure.pprint :as pprint]
             [xhr2]
             [server.dci-model :refer [IServer]]
-            [dci.main :refer [app-state]]
+            [dci.state :refer [app-state]]
             ))
 
 (set! js/XMLHttpRequest xhr2)
