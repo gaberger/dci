@@ -1,4 +1,7 @@
+.*
 node_modules/
 .shadow_cljs/
 target
 out
+bin
+dci-state.edn
