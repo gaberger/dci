@@ -14,7 +14,6 @@
   (fexists? state-file))
 
 (defn- write-state-file [data]
-  (println "Write-state-file" data)
   (spit state-file data))
 
 (defn- read-state-file []
@@ -32,20 +31,21 @@
 
 (defn initialize-state []
   (let [state {:lastrun (js/Date.)
-               :runtime {:project-id nil}}]
+               :runtime {:project-id nil
+                         :project-name nil}}]
     (write-state-file state)))
 
-(defn update-project-id [id]
+(defn update-project-id [id name]
   (let [state (read-state-file)]
     (->
      state
-     (assoc-in [:runtime :project-id] id)
      (assoc :lastrun (js/Date.))
+     (assoc :runtime {:project-id id :project-name name})
      (write-state-file))))
 
-(defn get-project-id []
+(defn get-project-id-state []
   (let [state (read-state-file)]
-    (-> state :runtime :project-id)))
+    [(-> state :runtime :project-id) (-> state :runtime :project-name)]))
 
 (defn projectid? []
   (let [state (read-state-file)
@@ -53,6 +53,9 @@
     (if-not (nil? (:project-id runtime))
       true
       false)))
+
+(defn set-debug! []
+  (swap! app-state assoc :debug true))
 
 (defn get-api-token []
   (if (nil? (get-env "APIKEY"))

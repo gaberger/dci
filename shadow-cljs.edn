@@ -14,6 +14,10 @@
                                :output-to "target/dci-server.js"
                                :release   {:compiler-options {:optimizations :simple}}
                                :main      server.dci-server/main!}
+                :project       {:target    :node-script
+                               :output-to "target/dci-project.js"
+                               :release   {:compiler-options {:optimizations :simple}}
+                               :main      server.dci-project/main!}
                 :server-model {:target    :node-library
                                :output-to "target/dci-model.js"
                                :release   {:compiler-options {:optimizations :simple}}
@@ -33,7 +37,8 @@
                                            :get-api-token     utils.core/get-api-token
                                            :state-file        utils.core/state-file
                                            :state-exists      utils.core/state-exists
-                                           :projectid?        utils.core/projectid?}}
+                                           :projectid?        utils.core/projectid?
+                                           :set-debug!        utils.core/set-debug!}}
                 :test         {:target    :node-test
                                :output-to "out/packet-test.js"
                                :ns-regexp "-test$"

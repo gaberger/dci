@@ -3,15 +3,16 @@
             [martian.cljs-http :as martian-http]
             [util]
             [schema.core :as s :include-macros true]
-            [cljs.core.async :refer [<! timeout take!] :refer-macros [go go-loop]]
+            [cljs.core.async :refer [<! timeout take! chan] :refer-macros [go go-loop]]
             [clojure.string :as str]
             [clojure.pprint :as pprint]
-            [xhr2]
+            [xmlhttprequest :refer [XMLHttpRequest]]
             [server.dci-model :refer [IServer]]
             [dci.state :refer [app-state]]
+            [utils.core :as utils]
             ))
 
-(set! js/XMLHttpRequest xhr2)
+(set! js/XMLHttpRequest XMLHttpRequest)
 (declare print-json)
 
 (def add-authentication-header
@@ -23,8 +24,13 @@
   (martian-http/bootstrap "https://api.packet.net"
                           [
                            {:route-name  :get-projects
-                            :path-parts  ["/projects/" :id]
+                            :path-parts  ["/projects"]
                             :summary     "Get projects listing"
+                            :method      :get
+                            }
+                           {:route-name  :get-project
+                            :path-parts  ["/projects/" :id]
+                            :summary     "Get project"
                             :method      :get
                             :path-schema {:id s/Str}
                             }
@@ -100,25 +106,25 @@
                                                      ::martian/body opts}))]
                 (response-handler response))))
 
-(defn read-request [k opts]
+(defn read-request
+  ([k opts]
   (when (:debug @app-state) (println "read-request" k opts))
   (go  (let [m (bootstrap-packet-cljs)
              _ (when (:debug @app-state) (println (martian/request-for m k opts)))
              response (<! (martian/response-for m k opts))]
-            (response-handler response))))
+         (response-handler response))))
+  ([k]
+   (read-request k nil)))
 
 
-(defn get-projects [id]
-  (go (let [m        (bootstrap-packet-cljs)
-            response (<! (martian/response-for m :get-projects {:id id}))]
-        (when (:debug @app-state) (println (martian/request-for m :get-projects {:id id})))
-        (js/console.log "DEBUG" (.inspect util response))
-        (response-handler response))))
+
+;; Implementations
 
 (defn get-device [id]
   (read-request :get-device {:id id}))
 
-(defn get-devices [args]
+(defn- list-devices [args]
+  (when (:debug @app-state) (println "calling list-devices" args))
  (go
    (let [devices    (:devices (<! (read-request :get-devices args)))
          dev-vector (into []
@@ -136,17 +142,53 @@
                                                :state    state})))
                                   []
                                   devices))]
-    (when (empty? devices)
-      (do (println "No devices found for project " (:id args))
+     (when (empty? devices)
+       (do (println "No Devices found for " (:id args))
+           (.exit js/process)))
+     (if  (:json @app-state)
+       (utils/print-json dev-vector)
+       (pprint/print-table dev-vector)))))
+
+(defn- list-projects []
+  (when (:debug @app-state) (println "calling list-projects" ))
+ (go
+   (let [projects (:projects  (<! (read-request :get-projects)))
+         v-coll   (into []
+                        (reduce
+                         (fn [acc m]
+                           (let [id           (:id m)
+                                 name         (:name m)
+                                 device-count (-> m :devices count)
+                                 member-count (-> m :members count)]
+                             (conj acc {:id           id
+                                        :name         name
+                                        :device-count device-count
+                                        :member-count member-count})))
+                         []
+                         projects))]
+    (when (empty? projects)
+      (do (println "No Projects found for user")
           (.exit js/process)))
     (if  (:json @app-state)
-      (print-json dev-vector)
-      (pprint/print-table dev-vector)))))
+      (utils/print-json v-coll)
+      (pprint/print-table v-coll)))))
+
+(defn- get-project-name [id]
+  (when (:debug @app-state)  (println "calling get-project-name" id))
+  (let [out-chan (chan)]
+    (go
+      (let [m        (bootstrap-packet-cljs)
+            response (<! (read-request :get-project {:id id}))]
+        (when (:debug @app-state) (println (martian/request-for m :get-project {:id id})))
+        (>! out-chan (:name response))))
+    out-chan))
 
 (defn create-device [args]
+  (when (:debug @app-state)  (println "calling create-device" args))
     (write-request :create-device args))
 
 (defn delete-device [id]
+  (when (:debug @app-state) (println "calling delete-device" id ))
   (go (let [m (bootstrap-packet-cljs)
             response (<! (martian/response-for m :delete-device {:id id}))]
         (when (:debug @app-state) (println (martian/request-for m :delete-device {:id id})))
@@ -158,7 +200,7 @@
     device-id))
 
 
-(defn- list-devices
+#_(defn- list-devices
   [project-id]
   (when (:debug @app-state) (println {:function   :list-devices
                                       :project-id project-id
@@ -175,14 +217,11 @@
 
 (deftype PacketServer []
   IServer
-  (list-servers [this project-id]
-    (get-devices {:id project-id}))
-  (create-server [this args]
-     (create-device args))
+  (list-projects [this] (list-projects))
+  (get-project-name [this args] (get-project-name (first args)))
+  (list-servers [this args] (list-devices {:id (first args)}))
+  (create-server [this args] (create-device  args))
   (delete-server  [this device-id] (delete-device device-id))
   (start-server  [this device-id] (println "start-server" device-id))
   (stop-server  [this device-id] (println "stop-server" name)))
 
-
-(defn print-json [obj]
-  (println (.stringify js/JSON (clj->js obj) nil " ")))
