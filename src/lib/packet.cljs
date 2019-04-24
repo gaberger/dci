@@ -134,37 +134,45 @@
 (defn- list-devices [args]
   (when (:debug @app-state) (println "calling list-devices" args))
  (go
-   (let [devices    (:devices (<! (read-request :get-devices args)))
-         dev-vector (into []
-                          (reduce
-                           (fn [acc device]
-                                  (let [id               (:id device)
-                                        facility         (-> device :facility :name)
-                                        operating-system (-> device :operating_system :name)
-                                        hostname         (:hostname device)
-                                        ;tags             (str/join ", " (:tags device))
-                                        tags             (:tags device)
-                                        addresses        (mapv #(:address %) (:ip_addresses device))
-                                        network          (:network device)
-                                        root-password    (:root_password device)
-                                        state            (:state device)]
-                                    (conj acc {:id       id       :facility facility :operating-system operating-system
-                                               :hostname hostname :addresses addresses  :root-password    root-password
-                                               :state    state :tags tags})))
-                                  []
-                                  devices))]
+   (let [devices (:devices (<! (read-request :get-devices {:id (first args)})))
+         options (last args)
+         coll    (into []
+                       (reduce
+                        (fn [acc device]
+                          (let [id               (:id device)
+                                facility         (-> device :facility :name)
+                                operating-system (-> device :operating_system :name)
+                                hostname         (:hostname device)
+                                tags             (if-not (str/blank? (first (:tags device)))
+                                                   (into #{} (mapv #(str/trim %)(:tags device)))
+                                                   [])
+                                addresses        (into #{} (mapv #(:address %) (:ip_addresses device)))
+                                network          (:network device)
+                                root-password    (:root_password device)
+                                state            (:state device)]
+                            (conj acc {:id       id       :facility  facility  :operating-system operating-system
+                                       :hostname hostname :addresses addresses :root-password    root-password
+                                       :state    state    :tags      tags})))
+                        []
+                        devices))
+         coll    (if-not (empty? (:filter options))
+                   (utils/filter-pred coll (:filter options))
+                   coll)]
      (when (empty? devices)
        (do (println "No Devices found for " (:id args))
            (.exit js/process)))
-     (if  (:json @app-state)
-       (utils/print-json dev-vector)
-       (utils/print-table dev-vector)))))
+
+     (condp = (:output @app-state)
+       :json  (utils/print-json coll)
+       :edn   (utils/print-edn coll)
+       :table (utils/print-table coll)
+       (utils/print-table coll)))))
 
 (defn- list-projects []
   (when (:debug @app-state) (println "calling list-projects" ))
  (go
    (let [projects (:projects  (<! (read-request :get-projects)))
-         v-coll   (into []
+         coll   (into []
                         (reduce
                          (fn [acc m]
                            (let [id           (:id m)
@@ -180,26 +188,32 @@
     (when (empty? projects)
       (do (println "No Projects found for user")
           (.exit js/process)))
-    (if  (:json @app-state)
-      (utils/print-json v-coll)
-      (utils/print-table v-coll)))))
+    (condp = (:output @app-state)
+        :json (utils/print-json coll)
+        :edn (utils/print-edn coll)
+        :table (utils/print-table coll)
+        (utils/print-table coll)))))
 
 (defn- list-organizations []
   (when (:debug @app-state) (println "calling list-orgnizations" ))
- (go
-   (let [organizations (:organizations (<! (read-request :get-organizations)))
-         v-coll            (into []
-                                 (reduce
-                                  (fn [acc m]
-                                    (conj acc (select-keys m [:id :name :description :account_id :monthly_spend])))
-                                  []
-                                  ))]
-    (when (empty? organizations)
-      (do (println "No Organizations found for user")
-          (.exit js/process 0)))
-    (if  (:json @app-state)
-      (utils/print-json v-coll)
-      (utils/print-table v-coll)))))
+  (go
+    (let [organizations (:organizations (<! (read-request :get-organizations)))
+          coll    (into []
+                          (reduce
+                           (fn [acc m]
+                             (conj acc (select-keys m [:id :name :description :account_id :monthly_spend])))
+                           []
+                           organizations))]
+            (when (empty? organizations)
+                   (do (println "No Organizations found for user")
+                       (.exit js/process 0)))
+            (condp = (:output @app-state)
+                :json (utils/print-json coll)
+                :edn   (utils/print-edn coll)
+                :table (utils/print-table coll)
+                (utils/print-table coll)))))
+
+
 
 (defn- get-project-name [id]
   (when (:debug @app-state)  (println "calling get-project-name" id))
@@ -249,7 +263,7 @@
   (list-projects [this] (list-projects))
   (list-organizations [this] (list-organizations))
   (get-project-name [this args] (get-project-name (first args)))
-  (list-servers [this args] (list-devices {:id (first args)}))
+  (list-servers [this args] (list-devices args))
   (create-server [this args] (create-device  args))
   (delete-server  [this args] (delete-device (first args)))
   (start-server  [this device-id] (println "start-server" device-id))

@@ -1,3 +1,4 @@
 (ns dci.state)
 
-(def app-state (atom {:debug false}))
+(def app-state (atom {:debug false
+                      :output :table}))

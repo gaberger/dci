@@ -26,6 +26,7 @@
                     (description "Project Module")
                     (option "-D --debug" "Debug")
                     (option "-J --json" "Output to JSON")
+                    (option "-E --edn" "Output to EDN")
                     (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet")
                     )]
 
@@ -38,7 +39,17 @@
 
 
     (.parse program (.-argv js/process))
-    (when (.-json program) (swap! app-state assoc :json true))
+    (cond
+      (.-json program) (swap! app-state assoc :output :json)
+      (.-edn program)  (swap! app-state assoc :output :edn)
+      :else            (swap! app-state assoc :output :table)
+      )
+
+    (when (.-debug program) (do
+                              (swap! app-state assoc :debug true)
+                              (js/console.log program)
+                              (pprint/pprint @app-state)))
+
     (cond (= (.-args.length program) 0)
           (.. program 
               (help #(clojure.string/replace % #"dci-organiztion" "organization"))

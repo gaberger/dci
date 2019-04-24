@@ -10,11 +10,14 @@
 
 (def state-file ".dci-state.edn")
 
+(defn print-edn [obj]
+  (pprint/pprint  obj))
+
 (defn print-json [obj]
     (println (.stringify js/JSON (clj->js obj) nil " ")))
 
 (defn print-table [obj]
-  (let [convert (postwalk #(if(and (vector? %) (string? (first %))) (str/join ", " %)  %) obj)]
+  (let [convert (postwalk #(if(and (set? %) (string? (first %))) (str/join "," %)  %) obj)]
     (pprint/print-table convert)))
 
 (defn state-exists []
@@ -69,3 +72,12 @@
     (do (println "Error: Set APIKEY environmental variable")
         (.exit js/process 1))
     (swap! app-state assoc :apikey  (get-env "APIKEY"))))
+
+
+
+(defn filter-pred [data filter]
+  (into []
+        (for [m data
+              :let  [tags (:tags m)]
+              :when (contains? tags filter)]
+      m)))
