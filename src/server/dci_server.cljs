@@ -46,7 +46,7 @@
                       (let [[id name] (if (some? (.-projectId cmd))
                                         (let [project-id   (.-projectId cmd)
                                               chan         (command-actions (keyword (.-provider program))
-                                                            :get-project-name project-id)
+                                                                            :get-project-name project-id)
                                               project-name (<! chan)]
                                           [project-id project-name])
                                         (utils/get-project-id-state))]
@@ -65,18 +65,30 @@
 
     (if (utils/projectid?)
          (.. program
-          (command "create <hostname> [plan] [facilities] [os]")
-          (description "Create Bare Metal Cloud Server.")
-          (action (fn [hostname plan facilities os]
-                    (let [[project-id _] (utils/get-project-id-state)
-                          hostname'      (str hostname)
-                          plan'          (or plan  "baremetal_0")
-                          facilities'    (or facilities ["ewr1"] )
-                          os'            (or os "ubuntu_16_04")
-                          args           {:id       project-id  :hostname         hostname' :plan plan'
-                                          :facility facilities' :operating_system os'}]
-                      (when (.-debug program) (swap! app-state assoc :debug true))
-                      (command-actions (keyword (.-provider program))
+             (command "create <hostname>")
+             (option "-L --plan <plan>" "Select Plan")
+             (option "-F --facilities <facilities>" "Comman seperated list of facilities preferred facilities")
+             (option "-O --os <os>" "Select Operating System")
+             (option "-T --tags <tags>" "Comma seperated list of tags to apply to metadata")
+             (description "Create Bare Metal Cloud Server.")
+             (action (fn [hostname program]
+                       (let [defaults       (.-parent program)
+                             [project-id _] (utils/get-project-id-state)
+                             hostname'      (str hostname)
+                             plan'          (or (.-plan program) "baremetal_0")
+                             tags'          (if (.-tags program) (str/split (.-tags program) #",") [])
+                             facilities'    (if (.-facilities program) (str/split (.-facilities program) #",") ["ewr1"] )
+                             os'            (if (.-os program) (str/split (.-os program) #",") "ubuntu_16_04")
+                             args           {:id               project-id
+                                             :hostname         hostname'
+                                             :plan             plan'
+                                             :facility         facilities'
+                                             :tags             tags'
+                                             :operating_system os'}]
+                         (when (.-debug defaults) (do
+                                                    (println args)
+                                                    (swap! app-state assoc :debug true)))
+                      (command-actions (keyword (.-provider defaults))
                                        :create-server args)))))
          (.. program
             (command "create <project-id> <hostname> [plan] [facilities] [os]")

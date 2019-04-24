@@ -6,6 +6,7 @@
 (defn command-handler []
  (.. commander
      (version "0.0.1")
+     (command "organization <command>" "Organization operations")
      (command "project <command>" "Project operations")
      (command "server <command>" "Server operations")
      (description "Dell \"Bare Metal Cloud\" Command Interface")

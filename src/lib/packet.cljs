@@ -5,6 +5,7 @@
             [schema.core :as s :include-macros true]
             [cljs.core.async :refer [<! timeout take! chan] :refer-macros [go go-loop]]
             [clojure.string :as str]
+            [clojure.walk :refer [postwalk]]
             [clojure.pprint :as pprint]
             [xmlhttprequest :refer [XMLHttpRequest]]
             [server.dci-model :refer [IServer]]
@@ -23,10 +24,15 @@
 (defn bootstrap-packet-cljs []
   (martian-http/bootstrap "https://api.packet.net"
                           [
-                           {:route-name  :get-projects
-                            :path-parts  ["/projects"]
-                            :summary     "Get projects listing"
-                            :method      :get
+                           {:route-name :get-organizations
+                            :path-parts ["/organizations"]
+                            :summary    "Get Organization listing"
+                            :method     :get
+                            }
+                           {:route-name :get-projects
+                            :path-parts ["/projects"]
+                            :summary    "Get projects listing"
+                            :method     :get
                             }
                            {:route-name  :get-project
                             :path-parts  ["/projects/" :id]
@@ -50,6 +56,7 @@
                             :consumes    ["application/json"]
                             :body-schema {:hostname         s/Any
                                           :facility         [s/Str]
+                                          :tags             [s/Str]
                                           :plan             s/Str
                                           :operating_system s/Str}
                             }
@@ -89,6 +96,7 @@
     401 (error-and-exit)
     404 (error-and-exit)
     422 (error-and-exit)
+    406 body
     200 body
     201 body
     204 body
@@ -134,12 +142,15 @@
                                         facility         (-> device :facility :name)
                                         operating-system (-> device :operating_system :name)
                                         hostname         (:hostname device)
+                                        ;tags             (str/join ", " (:tags device))
+                                        tags             (:tags device)
+                                        addresses        (mapv #(:address %) (:ip_addresses device))
                                         network          (:network device)
                                         root-password    (:root_password device)
                                         state            (:state device)]
                                     (conj acc {:id       id       :facility facility :operating-system operating-system
-                                               :hostname hostname :network  network  :root-password    root-password
-                                               :state    state})))
+                                               :hostname hostname :addresses addresses  :root-password    root-password
+                                               :state    state :tags tags})))
                                   []
                                   devices))]
      (when (empty? devices)
@@ -147,7 +158,7 @@
            (.exit js/process)))
      (if  (:json @app-state)
        (utils/print-json dev-vector)
-       (pprint/print-table dev-vector)))))
+       (utils/print-table dev-vector)))))
 
 (defn- list-projects []
   (when (:debug @app-state) (println "calling list-projects" ))
@@ -171,7 +182,24 @@
           (.exit js/process)))
     (if  (:json @app-state)
       (utils/print-json v-coll)
-      (pprint/print-table v-coll)))))
+      (utils/print-table v-coll)))))
+
+(defn- list-organizations []
+  (when (:debug @app-state) (println "calling list-orgnizations" ))
+ (go
+   (let [organizations (:organizations (<! (read-request :get-organizations)))
+         v-coll            (into []
+                                 (reduce
+                                  (fn [acc m]
+                                    (conj acc (select-keys m [:id :name :description :account_id :monthly_spend])))
+                                  []
+                                  ))]
+    (when (empty? organizations)
+      (do (println "No Organizations found for user")
+          (.exit js/process 0)))
+    (if  (:json @app-state)
+      (utils/print-json v-coll)
+      (utils/print-table v-coll)))))
 
 (defn- get-project-name [id]
   (when (:debug @app-state)  (println "calling get-project-name" id))
@@ -183,9 +211,10 @@
         (>! out-chan (:name response))))
     out-chan))
 
+;;TODO Check for duplicate host-name or use a generating uuid
 (defn create-device [args]
   (when (:debug @app-state)  (println "calling create-device" args))
-    (write-request :create-device args))
+    (write-request :create-device (first args)))
 
 (defn delete-device [id]
   (when (:debug @app-state) (println "calling delete-device" id ))
@@ -218,10 +247,11 @@
 (deftype PacketServer []
   IServer
   (list-projects [this] (list-projects))
+  (list-organizations [this] (list-organizations))
   (get-project-name [this args] (get-project-name (first args)))
   (list-servers [this args] (list-devices {:id (first args)}))
   (create-server [this args] (create-device  args))
-  (delete-server  [this device-id] (delete-device device-id))
+  (delete-server  [this args] (delete-device (first args)))
   (start-server  [this device-id] (println "start-server" device-id))
   (stop-server  [this device-id] (println "stop-server" name)))
 

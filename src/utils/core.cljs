@@ -3,12 +3,19 @@
             [cljs-node-io.fs :refer [fexists?]]
             [cljs.reader :refer [read-string]]
             [util]
+            [clojure.pprint :as pprint]
+            [clojure.walk :refer [postwalk]]
+            [clojure.string :as str]
             [dci.state :refer [app-state]]))
 
 (def state-file ".dci-state.edn")
 
 (defn print-json [obj]
-  (println (.stringify js/JSON (clj->js obj) nil " ")))
+    (println (.stringify js/JSON (clj->js obj) nil " ")))
+
+(defn print-table [obj]
+  (let [convert (postwalk #(if(and (vector? %) (string? (first %))) (str/join ", " %)  %) obj)]
+    (pprint/print-table convert)))
 
 (defn state-exists []
   (fexists? state-file))
