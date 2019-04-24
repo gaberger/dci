@@ -103,6 +103,3 @@ dci-[platform] server list --tag etcd --json
  }
 ]
 ```
-
-
-
