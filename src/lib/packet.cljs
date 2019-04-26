@@ -16,10 +16,10 @@
 (set! js/XMLHttpRequest XMLHttpRequest)
 (declare print-json)
 
-(def add-authentication-header 
-  {:name ::add-authentication-header
+(def add-authentication-header
+  {:name  ::add-authentication-header
    :enter (fn [ctx]
-            (assoc-in ctx [:request :headers "X-Auth-Token"] (get-in @app-state [:runtime :apikey])))})
+            (assoc-in ctx [:request :headers "X-Auth-Token"] (utils/get-env "APIKEY")))})
 
 
 (defn bootstrap-packet-cljs []
@@ -184,7 +184,7 @@
 (defn- list-projects []
   (when (:debug @app-state) (println "calling list-projects" ))
  (go
-   (let [org-id (get-in @app-state [:runtime :organization-id])
+   (let [org-id (utils/get-env "ORGANIZATION_ID")
          projects (:projects  (<! (read-request :get-projects {:id org-id})))
          coll   (into []
                         (reduce

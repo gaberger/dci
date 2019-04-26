@@ -133,6 +133,4 @@
               ))))
 
 (defn main! []
-  (utils/get-environment)
-  (js/console.log "ORG" (utils/get-env "ORGANIZATION_ID"))
   (command-handler))

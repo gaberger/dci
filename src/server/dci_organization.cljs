@@ -56,7 +56,6 @@
               ))))
 
 (defn main! []
-  (utils/get-environment)
   (command-handler))
 
 

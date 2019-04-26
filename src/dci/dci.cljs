@@ -1,10 +1,8 @@
-(ns dci.main
+(ns dci.dci
   (:require [commander]
             [utils.core :as utils]
-            [child_process]
             [prompts]
-            [path]
-            [fs]
+            [cljs.nodejs.shell :as sh :include-macros true]
             [kitchen-async.promise :as p]
             [kitchen-async.promise.from-channel]
             [cljs-uuid-utils.core :as uuid]
@@ -20,9 +18,8 @@
     :list-organizations (list-organizations (PacketServer.))
     :default (println "Error: unknown command" (second args))))
 
-
-(defn prompts-get-org []
-  (p/let [orgs  (command-actions :packet :list-organizations )
+(defn prompts-get-org [program]
+  (p/let [orgs  (command-actions (keyword (.-provider program)) :list-organizations )
           choices  (mapv #(-> %
                               (select-keys [:id :name])
                               (set/rename-keys {:id :value :name :title})) orgs)
@@ -35,7 +32,7 @@
                          (let [orgid (.-orgid choice)]
                            (utils/set-env "ORGANIZATION_ID" orgid))))))
 
-(defn prompts-get-key []
+(defn prompts-get-key [program]
   (->
    (prompts #js {:type     "text"
                  :name     "apikey"
@@ -57,35 +54,42 @@
    (p/then (fn [x]
              (when (.-save_state x)
                (do
-                 (utils/update-environment)
+                 (utils/update-state)
                  (utils/save-state)
                  #_(js/console.log (.-env js/process))))))))
 
+(defn command-handler []
+    (.. commander
+                    (version "0.0.1")
+                    (command "organization <command>" "Organization operations")
+                    (command "project <command>" "Project operations")
+                    (command "server <command>" "Server operations")
+                    (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet")
+                    (description "Dell \"Bare Metal Cloud\" Command Interface"))
+  #_(.parse  (.-argv js/process))
+  )
 
 
-(defn main! []
-  (let [switchboard   "switchboard"
-        cwd           (. js/process (cwd))
-        launch-dir    (. path (dirname (second (.-argv js/process))))
-        resolved-path (. path (join launch-dir switchboard))
-        js-path       (if (. fs (existsSync (str resolved-path ".js")))
-                        (str resolved-path ".js") nil)
-        args          (into [] (nnext (js->clj (.-argv js/process))))]
+ (defn main! []
+   (let [program (command-handler)]
+     (utils/update-environment)
 
-    (if-not (utils/get-env "APIKEY")
-      (p/do
-        (prompts-get-key)
-        (prompts-get-org)
-        (prompts-save-state)
-        (. child_process (spawnSync js-path  (clj->js args) #js {:shell false
-                                                                 :stdio   "inherit"})))
-      (p/do
-        (prompts-get-org)
-        (. child_process (spawnSync js-path  (clj->js args) #js {:shell false
-                                                                 :stdio   "inherit"})))
-      )))
+     
 
+     (condp (utils/get-env-keys)
+       "APIKEY " (println "found key")
+       (println "not found"))
 
+     (when-not (utils/get-env "APIKEY")
+       (p/do
+         (prompts-get-key program)
+         (prompts-get-org program)
+         (prompts-save-state)
+         (.parse program (.-argv js/process)))
+     (when-not (utils/get-env "ORGANIZATION_ID")
+       (p/do
+         (prompts-get-org program)
+         (.parse program (.-argv js/process))))
 
-
+     )))
 

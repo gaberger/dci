@@ -3,6 +3,7 @@
             [cljs-node-io.fs :refer [fexists?]]
             [cljs.reader :refer [read-string]]
             [util]
+            [goog.object :as obj]
             [clojure.pprint :as pprint]
             [clojure.walk :refer [postwalk]]
             [clojure.string :as str]
@@ -27,7 +28,7 @@
 (defn- write-state-file [data]
   (spit state-file data))
 
-(defn- read-state-file []
+(defn read-state-file []
   (read-string (slurp state-file)))
 
 (defn dump-object [obj]
@@ -40,18 +41,23 @@
 (defn- set-env [k v]
   (aset (.-env js/process) k v))
 
+(defn get-env-keys []
+  (-> (obj/getKeys (.-env js/process)) (js->clj)))
+
 (defn initialize-state []
   (let [state {:lastrun (js/Date.)
+               :persist {:apikey nil
+                         :organization-id nil}
                :runtime {:project-id nil
-                         :project-name nil
-                         :apikey nil
-                         :organization-id nil}}]
+                         :project-name nil}}]
     (write-state-file state)))
 
 (defn save-state []
-  (let [run-state (:runtime @app-state)
+  (let [persist (:persist @app-state)
+        runtime (:runtime @app-state)
         state {:lastrun (js/Date.)
-               :runtime run-state}]
+               :runtime runtime
+               :persist persist}]
     (write-state-file state)))
 
 (defn update-project-id [id name]
@@ -76,17 +82,20 @@
 (defn set-debug! []
   (swap! app-state assoc :debug true))
 
-(defn get-environment []
-  (initialize-state)
+(defn update-state []
   (when-let [apikey (get-env "APIKEY")]
-        (swap! app-state assoc-in [:runtime] {:apikey apikey})
-    #_(do (println "Error: Set APIKEY environmental variable")
-        (.exit js/process 1)))
+        (swap! app-state assoc-in [:persist] {:apikey apikey}))
   (when-let [org-id (get-env "ORGANIZATION_ID")]
-    (swap! app-state update-in [:runtime] assoc :organization-id org-id))
-  (save-state))
+    (swap! app-state update-in [:persist] assoc :organization-id org-id)))
 
-
+(defn update-environment []
+  (if (state-exists)
+    (do
+      (when-let [apikey (some-> (read-state-file) :persist :apikey)]
+             (set-env "APIKEY" apikey))
+      (when-let [org-id (some-> (read-state-file) :persist :organization-id)]
+        (set-env "ORGANIZATION_ID" org-id))))
+  )
 
 (defn filter-pred [data filter]
   (into []
