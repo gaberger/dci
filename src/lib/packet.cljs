@@ -3,7 +3,7 @@
             [martian.cljs-http :as martian-http]
             [util]
             [schema.core :as s :include-macros true]
-            [cljs.core.async :refer [<! timeout take! chan] :refer-macros [go go-loop]]
+            [cljs.core.async :refer [<! >! timeout take! chan] :refer-macros [go go-loop]]
             [clojure.string :as str]
             [clojure.walk :refer [postwalk]]
             [clojure.pprint :as pprint]
@@ -16,10 +16,11 @@
 (set! js/XMLHttpRequest XMLHttpRequest)
 (declare print-json)
 
-(def add-authentication-header
+(def add-authentication-header 
   {:name ::add-authentication-header
    :enter (fn [ctx]
-            (assoc-in ctx [:request :headers "X-Auth-Token"] (:apikey @app-state)))})
+            (assoc-in ctx [:request :headers "X-Auth-Token"] (get-in @app-state [:runtime :apikey])))})
+
 
 (defn bootstrap-packet-cljs []
   (martian-http/bootstrap "https://api.packet.net"
@@ -30,9 +31,10 @@
                             :method     :get
                             }
                            {:route-name :get-projects
-                            :path-parts ["/projects"]
+                            :path-parts ["/organizations/" :id "/projects"]
                             :summary    "Get projects listing"
                             :method     :get
+                            :path-schema {:id s/Str}
                             }
                            {:route-name  :get-project
                             :path-parts  ["/projects/" :id]
@@ -59,7 +61,17 @@
                                           :tags             [s/Str]
                                           :plan             s/Str
                                           :operating_system s/Str}
-                            }
+                            }  {:route-name  :create-project
+                                :path-parts  ["/organizations/" :id "/project"]
+                                :path-schema {:id s/Str}
+                                :summary     "Create Project"
+                                :method      :post
+                                :produces    ["application/json"]
+                                :consumes    ["application/json"]
+                                :body-schema {:name              s/Any
+                                              :payment_method_id [s/Str]
+                                              :customdata        [s/Str]}
+                                }
                            {:route-name  :get-device
                             :path-parts  ["/devices/" :id]
                             :summary     "Get device listing"
@@ -134,7 +146,8 @@
 (defn- list-devices [args]
   (when (:debug @app-state) (println "calling list-devices" args))
  (go
-   (let [devices (:devices (<! (read-request :get-devices {:id (first args)})))
+   (let [id (first args)
+         devices (:devices (<! (read-request :get-devices {:id id})))
          options (last args)
          coll    (into []
                        (reduce
@@ -159,7 +172,7 @@
                    (utils/filter-pred coll (:filter options))
                    coll)]
      (when (empty? devices)
-       (do (println "No Devices found for " (:id args))
+       (do (println "No Devices found for " id)
            (.exit js/process)))
 
      (condp = (:output @app-state)
@@ -171,7 +184,8 @@
 (defn- list-projects []
   (when (:debug @app-state) (println "calling list-projects" ))
  (go
-   (let [projects (:projects  (<! (read-request :get-projects)))
+   (let [org-id (get-in @app-state [:runtime :organization-id])
+         projects (:projects  (<! (read-request :get-projects {:id org-id})))
          coll   (into []
                         (reduce
                          (fn [acc m]
@@ -196,8 +210,9 @@
 
 (defn- list-organizations []
   (when (:debug @app-state) (println "calling list-orgnizations" ))
-  (go
-    (let [organizations (:organizations (<! (read-request :get-organizations)))
+  (let [chan (chan)]
+    (go
+      (let [organizations (:organizations (<! (read-request :get-organizations)))
           coll    (into []
                           (reduce
                            (fn [acc m]
@@ -211,7 +226,8 @@
                 :json (utils/print-json coll)
                 :edn   (utils/print-edn coll)
                 :table (utils/print-table coll)
-                (utils/print-table coll)))))
+            (>! chan coll))))
+    chan))
 
 
 

@@ -35,8 +35,8 @@
          chan         (command-actions (keyword (.-provider parent))
                                        :get-project-name project-id)
          project-name (<! chan)]
-                      [project-id project-name])
-                    (utils/get-project-id-state)))
+        [project-id project-name])
+   (utils/get-project-id-state)))
 
 ;TODO Option does not deal with XOR
 (defn command-handler []
@@ -133,5 +133,6 @@
               ))))
 
 (defn main! []
-  (utils/get-api-token)
+  (utils/get-environment)
+  (js/console.log "ORG" (utils/get-env "ORGANIZATION_ID"))
   (command-handler))

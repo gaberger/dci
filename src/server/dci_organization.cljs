@@ -26,7 +26,7 @@
                     (description "Project Module")
                     (option "-D --debug" "Debug")
                     (option "-J --json" "Output to JSON")
-                    (option "-E --edn" "Output to EDN")
+                    (option "-E --n" "Output to JSON")
                     (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet")
                     )]
 
@@ -56,7 +56,7 @@
               ))))
 
 (defn main! []
-  (utils/get-api-token)
+  (utils/get-environment)
   (command-handler))
 
 

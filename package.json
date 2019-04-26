@@ -19,10 +19,16 @@
   },
   "dependencies": {
     "commander": "^2.20.0",
+    "prompts": "^2.0.4",
+    "ssh2shell": "^1.9.1",
     "xhr2": "^0.1.4"
   },
   "pkg": {
-      "scripts": "target/**/*.js",
-      "targets": ["linux","macos","win"]
+    "scripts": "target/**/*.js",
+    "targets": [
+      "linux",
+      "macos",
+      "win"
+    ]
   }
 }

@@ -68,7 +68,7 @@
               ))))
 
 (defn main! []
-  (utils/get-api-token)
+  (utils/get-environment)
   (command-handler))
 
 

@@ -5,7 +5,9 @@
                 [prismatic/schema "1.1.10"]
                 [me.raynes/fs "1.4.6"]
                 [cljs-node-io "1.1.2"]
-                [cider/cider-nrepl "0.16.0-SNAPSHOT"]]
+                [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
+                [kitchen-async "0.1.0-SNAPSHOT"]
+                [cider/cider-nrepl "0.21.0-SNAPSHOT"]]
  :nrepl        {:port 8202}
  :builds       {:main         {:target    :node-script
                                :output-to "target/dci.js"

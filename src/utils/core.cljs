@@ -16,6 +16,7 @@
 (defn print-json [obj]
     (println (.stringify js/JSON (clj->js obj) nil " ")))
 
+;TODO filter empty set
 (defn print-table [obj]
   (let [convert (postwalk #(if(and (set? %) (string? (first %))) (str/join "," %)  %) obj)]
     (pprint/print-table convert)))
@@ -42,7 +43,15 @@
 (defn initialize-state []
   (let [state {:lastrun (js/Date.)
                :runtime {:project-id nil
-                         :project-name nil}}]
+                         :project-name nil
+                         :apikey nil
+                         :organization-id nil}}]
+    (write-state-file state)))
+
+(defn save-state []
+  (let [run-state (:runtime @app-state)
+        state {:lastrun (js/Date.)
+               :runtime run-state}]
     (write-state-file state)))
 
 (defn update-project-id [id name]
@@ -67,11 +76,15 @@
 (defn set-debug! []
   (swap! app-state assoc :debug true))
 
-(defn get-api-token []
-  (if (nil? (get-env "APIKEY"))
-    (do (println "Error: Set APIKEY environmental variable")
-        (.exit js/process 1))
-    (swap! app-state assoc :apikey  (get-env "APIKEY"))))
+(defn get-environment []
+  (initialize-state)
+  (when-let [apikey (get-env "APIKEY")]
+        (swap! app-state assoc-in [:runtime] {:apikey apikey})
+    #_(do (println "Error: Set APIKEY environmental variable")
+        (.exit js/process 1)))
+  (when-let [org-id (get-env "ORGANIZATION_ID")]
+    (swap! app-state update-in [:runtime] assoc :organization-id org-id))
+  (save-state))
 
 
 

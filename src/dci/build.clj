@@ -25,6 +25,7 @@
   (sh "pkg" "package.json" "--output" "bin/dci"))
 
 (defn archive []
+  (native)
   (let [files (mapv #(fs/normalized %) (fs/list-dir "./bin"))]
       (doall
        (map (fn [file]
