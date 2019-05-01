@@ -235,13 +235,7 @@
 
 (defn- get-project-name [id]
   (when (:debug @app-state)  (println "calling get-project-name" id))
-  (let [out-chan (chan)]
-    (go
-      (let [m        (bootstrap-packet-cljs)
-            response (<! (read-request :get-project {:id id}))]
-        (when (:debug @app-state) (println (martian/request-for m :get-project {:id id})))
-        (>! out-chan (:name response))))
-    out-chan))
+   (read-request :get-project {:id id}))
 
 ;;TODO Check for duplicate host-name or use a generating uuid
 (defn create-device [{:keys [id name facilities tags plan os] :as args}]
@@ -355,11 +349,11 @@
   (print-projects [this] (print-projects))
   (get-projects [this] (get-projects))
   (create-project [this args] (create-project (first args)))
-  (delete-project [this id] (delete-project (first id)))
+  (delete-project [this args] (delete-project (first args)))
+  (get-project-name [this args] (get-project-name (first args)))
 
   (list-plans [this] (list-plans))
   (get-server [this id] (get-device id))
-  (get-project-name [this args] (get-project-name (first args)))
   (list-servers [this args] (list-devices (first args)))
   (create-server [this args] (create-device  args))
   (create-service [this args] (create-service args))

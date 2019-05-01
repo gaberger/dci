@@ -2,6 +2,8 @@
   (:require [commander]
             [util]
             [cljs.pprint :as pprint]
+            [kitchen-async.promise :as p]
+            [kitchen-async.promise.from-channel]
             [cljs.core.async :refer [chan put! take! >! <! buffer
                                      dropping-buffer sliding-buffer timeout close! alts!] :as async]
             [cljs.core.async :refer-macros [go go-loop alt!]]
@@ -38,11 +40,10 @@
         (command "change <project-id>")
         (action (fn [project-id]
                   (when (.-debug program) (swap! app-state assoc :debug true))
-                  (let [chan (command-actions (keyword (.-provider program)) :get-project-name project-id)]
-                    (go
-                      (let [project-name (<! chan)]
-                        (utils/update-project-id project-id project-name))
-                        (println "Switching to Project" project-id))))))
+                  (p/let [result (command-actions (keyword (.-provider program)) :get-project-name project-id)
+                          name (-> result :body :name)]
+                        (utils/update-project-id project-id name))
+                        (println "Switching to Project" project-id))))
 
     (.. program
         (description "List Projects")

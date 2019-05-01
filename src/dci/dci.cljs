@@ -77,6 +77,7 @@
 
 (defn main! []
   (utils/update-environment)
+  (utils/initialize-state)
   (swap! app-state assoc :output :json)
   (let [program  (command-handler)
         env-keys (utils/get-env-keys)]

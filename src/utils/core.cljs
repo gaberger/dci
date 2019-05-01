@@ -56,18 +56,14 @@
 
 (defn initialize-state []
   (let [state {:lastrun (js/Date.)
-               :persist {:apikey nil
-                         :organization-id nil}
                :runtime {:project-id nil
                          :project-name nil}}]
     (write-state-file state)))
 
 (defn save-state []
-  (let [persist (:persist @app-state)
-        runtime (:runtime @app-state)
+  (let [runtime (:runtime @app-state)
         state {:lastrun (js/Date.)
-               :runtime runtime
-               :persist persist}]
+               :runtime runtime}]
     (write-state-file state)))
 
 
