@@ -5,3 +5,4 @@ target
 out
 bin
 dci-state.edn
+cljs-test-runner-out

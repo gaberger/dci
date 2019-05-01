@@ -10,6 +10,7 @@
             [dci.state :refer [app-state]]))
 
 (def state-file ".dci-state.edn")
+(def config-file "dci-config.edn")
 
 (defn print-edn [obj]
   (pprint/pprint  obj))
@@ -25,11 +26,20 @@
 (defn state-exists []
   (fexists? state-file))
 
+(defn config-exists []
+  (fexists? config-file))
+
 (defn- write-state-file [data]
   (spit state-file data))
 
+(defn- write-config-file [data]
+  (spit config-file data))
+
 (defn read-state-file []
   (read-string (slurp state-file)))
+
+(defn read-config-file []
+  (read-string (slurp config-file)))
 
 (defn dump-object [obj]
   (println "###########")
@@ -42,7 +52,7 @@
   (aset (.-env js/process) k v))
 
 (defn get-env-keys []
-  (-> (obj/getKeys (.-env js/process)) (js->clj)))
+  (into #{} (-> (obj/getKeys (.-env js/process)) (js->clj) )))
 
 (defn initialize-state []
   (let [state {:lastrun (js/Date.)
@@ -59,6 +69,12 @@
                :runtime runtime
                :persist persist}]
     (write-state-file state)))
+
+
+(defn save-config[]
+  (let [config (:persist @app-state)]
+    (write-config-file config)))
+
 
 (defn update-project-id [id name]
   (let [state (read-state-file)]
@@ -89,11 +105,11 @@
     (swap! app-state update-in [:persist] assoc :organization-id org-id)))
 
 (defn update-environment []
-  (if (state-exists)
+  (if (config-exists)
     (do
-      (when-let [apikey (some-> (read-state-file) :persist :apikey)]
+      (when-let [apikey (some-> (read-config-file) :apikey)]
              (set-env "APIKEY" apikey))
-      (when-let [org-id (some-> (read-state-file) :persist :organization-id)]
+      (when-let [org-id (some-> (read-config-file) :organization-id)]
         (set-env "ORGANIZATION_ID" org-id))))
   )
 

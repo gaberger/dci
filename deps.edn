@@ -11,4 +11,6 @@
   kitchen-async                       {:mvn/version "0.1.0-SNAPSHOT"}
   cider/cider-nrepl                   {:mvn/version "0.21.0-SNAPSHOT"}
   }
- }
+ :paths ["src" "test"]
+ :aliases     {:test {:extra-deps {olical/cljs-test-runner {:mvn/version "3.5.0"}}
+                      :main-opts  ["-m" "cljs-test-runner.main"]}}}

@@ -6,19 +6,21 @@
                                      dropping-buffer sliding-buffer timeout close! alts!] :as async]
             [cljs.core.async :refer-macros [go go-loop alt!]]
             [clojure.string :as str]
-            [server.dci-model :as model :refer [IServer list-servers create-server delete-server list-projects get-project-name]]
+            [server.dci-model :as model :refer [IServer]]
             [lib.packet :as packet :refer [PacketServer]]
             [utils.core :as utils]
             [dci.state :refer [app-state]]))
 
 (enable-console-print!)
 
-(defmulti command-actions identity :default :default)
+(defmulti command-actions identity)
 (defmethod command-actions :packet [& args]
   (condp = (second args)
-    :list-projects (list-projects (PacketServer.))
-    :get-project-name (get-project-name (PacketServer.) (nnext args))
-    :default (println "Error: unknown command" (second args))))
+    :print-projects    (model/print-projects (PacketServer.))
+    :create-project   (model/create-project (PacketServer.) (nnext args))
+    :delete-project   (model/delete-project (PacketServer.) (nnext args))
+    :get-project-name (model/get-project-name (PacketServer.) (nnext args))
+    (println "Error: unknown command" (second args))))
 
 
 (defn command-handler []
@@ -47,7 +49,21 @@
         (command "list")
         (action (fn []
                   (when (.-debug program) (utils/set-debug!))
-                    (command-actions  (keyword (.-provider program)) :list-projects))))
+                  (command-actions  (keyword (.-provider program)) :print-projects))))
+
+    (.. program
+        (description "Create Project")
+        (command "create <name>")
+        (action (fn [name]
+                  (when (.-debug program) (utils/set-debug!))
+                  (command-actions  (keyword (.-provider program)) :create-project name))))
+
+    (.. program
+        (description "Delete Project")
+        (command "delete <project-id>")
+        (action (fn [projectId]
+                  (when (.-debug program) (utils/set-debug!))
+                  (command-actions  (keyword (.-provider program)) :delete-project projectId))))
 
 
     (.parse program (.-argv js/process))

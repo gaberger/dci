@@ -20,7 +20,7 @@
     :get-project-name (get-project-name (PacketServer.) (nnext args))
     :delete-server (delete-server (PacketServer.) (nnext args))
     :create-server (create-server (PacketServer.) (nnext args))
-    :default (println "Error: unknown command" (second args))))
+    (println "Error: unknown command" (second args))))
 
 (defn create-handler [args]
   (let [[command project-id hostname plan facilities operating-system] args]
@@ -60,7 +60,7 @@
                              [id name] (get-project-details program cmd)]
                          (when (= (:output @app-state) :table)
                                 (println "Using Project:" name "\nID:" id))
-                              (command-actions (keyword (.-provider program)) :list-servers id tag))
+                              (command-actions (keyword (.-provider program)) :list-servers {:id id :options tag}))
                         ))))
 
     (.. program
@@ -68,8 +68,10 @@
         (command "list <project-id>")
         (action (fn [project-id]
                   (when (.-debug program) (swap! app-state assoc :debug true))
-                  (command-actions (keyword (.-provider program)) :list-servers project-id))))
-      )
+                  (command-actions (keyword (.-provider program)) :list-servers {:id project-id}))))
+    )
+
+
 
     (if (utils/projectid?)
          (.. program

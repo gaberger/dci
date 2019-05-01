@@ -1,4 +1,4 @@
-(ns server.dci-organization
+(ns server.dci-service)
   (:require [commander]
             [util]
             [cljs.pprint :as pprint]
@@ -6,38 +6,40 @@
                                      dropping-buffer sliding-buffer timeout close! alts!] :as async]
             [cljs.core.async :refer-macros [go go-loop alt!]]
             [clojure.string :as str]
-            [server.dci-model :as model :refer [IServer]]
+            [server.dci-model :as model :refer [IServer delete-project create-project list-servers create-server delete-server list-projects get-project-name]]
             [lib.packet :as packet :refer [PacketServer]]
             [utils.core :as utils]
             [dci.state :refer [app-state]]))
 
 (enable-console-print!)
 
-(defmulti command-actions identity)
+(defmulti command-actions identity :default :default)
 (defmethod command-actions :packet [& args]
-  (when (:debug @app-state) (println "command-actions" args))
   (condp = (second args)
-    :print-organizations (model/print-organizations (PacketServer.))
-  (println "Error: unknown command" (second args))))
+    :create-service (create-service (PacketServer.))
+    :default          (println "Error: unknown command" (second args))))
 
 
 (defn command-handler []
   (let [program (.. commander
                     (version "0.0.1")
-                    (description "Project Module")
+                    (description "Service Module")
                     (option "-D --debug" "Debug")
                     (option "-J --json" "Output to JSON")
-                    (option "-E --n" "Output to JSON")
+                    (option "-E --edn" "Output to EDN")
                     (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet")
                     )]
 
     (.. program
-        (description "List Organizations")
-        (command "list")
-        (action (fn []
-                  (when (.-debug program) (utils/set-debug!))
-                    (command-actions  (keyword (.-provider program)) :print-organizations))))
-
+        (description "Create Service")
+        (command "create <name>")
+        (action (fn [name]
+                  (when (.-debug program) (swap! app-state assoc :debug true))
+                  (let [chan (command-actions (keyword (.-provider program)) :create-service name)]
+                    (go
+                      (let [project-name (<! chan)]
+                        (utils/update-project-id project-id project-name))
+                        (println "Switching to Project" project-id))))))
 
     (.parse program (.-argv js/process))
     (cond
@@ -53,10 +55,8 @@
 
     (cond (= (.-args.length program) 0)
           (.. program 
-              (help #(clojure.string/replace % #"dci-organiztion" "organization"))
+              (help #(clojure.string/replace % #"dci-service" "service"))
               ))))
 
 (defn main! []
   (command-handler))
-
-

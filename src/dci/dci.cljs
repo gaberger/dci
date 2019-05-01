@@ -8,18 +8,23 @@
             [cljs-uuid-utils.core :as uuid]
             [clojure.set :as set]
             [dci.state :refer [app-state]]
-            [server.dci-model :as model :refer [IServer list-organizations]]
+            [server.dci-model :as model :refer [IServer]]
             [lib.packet :as packet :refer [PacketServer]]
             [clojure.string :as str]))
 
-(defmulti command-actions identity :default :default)
+
+(defmulti command-actions identity)
 (defmethod command-actions :packet [& args]
-  (condp = (second args)
-    :list-organizations (list-organizations (PacketServer.))
-    :default (println "Error: unknown command" (second args))))
+    (when (:debug @app-state) (println "command-actions" args))
+    (condp = (second args)
+      :print-organizations (model/print-organizations (PacketServer.))
+      :get-organizations   (model/get-organizations (PacketServer.))
+      (println "Error: unknown command" (second args))))
+
 
 (defn prompts-get-org [program]
-  (p/let [orgs  (command-actions (keyword (.-provider program)) :list-organizations )
+  (p/let [response   (command-actions (keyword (.-provider program)) :get-organizations)
+          orgs (-> response :body :organizations)
           choices  (mapv #(-> %
                               (select-keys [:id :name])
                               (set/rename-keys {:id :value :name :title})) orgs)
@@ -55,7 +60,7 @@
              (when (.-save_state x)
                (do
                  (utils/update-state)
-                 (utils/save-state)
+                 (utils/save-config)
                  #_(js/console.log (.-env js/process))))))))
 
 (defn command-handler []
@@ -70,26 +75,27 @@
   )
 
 
- (defn main! []
-   (let [program (command-handler)]
-     (utils/update-environment)
+(defn main! []
+  (utils/update-environment)
+  (swap! app-state assoc :output :json)
+  (let [program  (command-handler)
+        env-keys (utils/get-env-keys)]
 
-     
+        (cond
+          (every? env-keys #{"APIKEY" "ORGANIZATION_ID"}) (.parse program (.-argv js/process))
 
-     (condp (utils/get-env-keys)
-       "APIKEY " (println "found key")
-       (println "not found"))
-
-     (when-not (utils/get-env "APIKEY")
-       (p/do
-         (prompts-get-key program)
-         (prompts-get-org program)
-         (prompts-save-state)
-         (.parse program (.-argv js/process)))
-     (when-not (utils/get-env "ORGANIZATION_ID")
-       (p/do
-         (prompts-get-org program)
-         (.parse program (.-argv js/process))))
-
-     )))
+          (contains? env-keys "ORGANIZATION_ID") (p/do
+                                                   (prompts-get-key program)
+                                                   (prompts-save-state)
+                                                   (.parse program (.-argv js/process)))
+          (contains? env-keys "APIKEY")          (p/do
+                                                   (prompts-get-org program)
+                                                   (prompts-save-state)
+                                                   (.parse program (.-argv js/process)))
+          :else                                  (p/do
+                                                   (prompts-get-key program)
+                                                   (prompts-get-org program)
+                                                   (prompts-save-state)
+                                                   (.parse program (.-argv js/process)))
+          )))
 

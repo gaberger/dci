@@ -1,0 +1,6 @@
+{:etcd {:count 3
+        :plan :baremetal_0
+        :location :ewr1
+        :os :ubuntu_16-04
+        }
+ }

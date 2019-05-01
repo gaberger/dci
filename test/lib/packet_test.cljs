@@ -1,55 +1,64 @@
 (ns lib.packet-test
-  (:require [martian.cljs-http :as martian-http]
-            [martian.core :as martian]
-            [lib.packet :as packet]
-            [server.dci-server :refer [get-api-token]]
-            [xhr2]
-            [cljs.test :refer-macros [deftest testing is run-tests async]]
-            [cljs.core.async :refer [<! timeout take!]])
-  (:require-macros [cljs.core.async.macros :refer [go]]))
+  (:require [lib.packet :as packet]
+            [dci.state :refer [app-state]]
+            [utils.core :as utils]
+            [cljs.core.async :refer [<! >! timeout take! chan] :refer-macros [go go-loop]]
+            [cljs.test :refer-macros [deftest testing is run-tests async]]))
 
-(set! js/XMLHttpRequest xhr2)
+(assert (not (nil? (utils/get-env "APIKEY"))))
+(assert (not (nil? (utils/get-env "ORGANIZATION_ID"))))
+(swap! app-state assoc :debug true)
 
-(def id "e40d191d-4394-477c-b47d-2f08cc26a98a")
-(get-api-token)
+(def test-state (atom {}))
 
-(deftest get-devices-request
-  (let [m        (packet/bootstrap-packet-cljs)
-        response (martian/request-for m :get-devices {:id id})]
-    (is (= {:headers {"X-Auth-Token" nil},
-            :method  :get,
-            :url     "https://api.packet.net/projects/e40d191d-4394-477c-b47d-2f08cc26a98a/devices",
-            :as      :auto}
-           response))))
+(defmethod cljs.test/report [:cljs.test/default :end-run-tests] [m]
+  (if (cljs.test/successful? m)
+    (println "Success!")
+    (println "FAIL")))
 
-(deftest create-device-request
-  (let [m        (packet/bootstrap-packet-cljs)
-        data  {:id               "e40d191d-4394-477c-b47d-2f08cc26a98a"
-               :device           "foobar"
-               :plan             "baremetal_0"
-               :facility         ["ewr"]
-               :operating_system "ubuntu_16_04"}
-        id      (:id data)
-        opts    (dissoc data :id)
-        response (martian/request-for m :create-device {:id id
-                                                        ::martian/body opts})]
-    (is (= {:headers {"X-Auth-Token" nil, "Content-Type" "application/json", "Accept" "application/json"},
-           :method :post, :url "https://api.packet.net/projects/e40d191d-4394-477c-b47d-2f08cc26a98a/devices",
-           :body "{\"device\":\"foobar\",\"plan\":\"baremetal_0\",\"facility\":[\"ewr\"],\"operating_system\":\"ubuntu_16_04\"}", :as :text})
-           response)))
 
-(deftest create-device
+#_(deftest create-test
+  (let [project (packet/create-project {:name "test-project"})]
+    (async done
+         (go
+           (let [project-id (:id (:body (<! project)))
+                 device     (:id (:body (<! (packet/create-device {:id         project-id
+                                                       :name       "test-device"
+                                                       :plan       "baremetal_0"
+                                                       :facilities ["ewr1"]
+                                                       :os         "ubuntu_16_04"}))))
+                 result (<! (packet/get-device device))]
+             (swap! test-state assoc :project-id project)
+             (swap! test-state assoc :device-id device)
+               (is (= 200
+                      (:status result)))
+         (done))))))
+
+
+(deftest project-create-delete
+  (let [project-name "test"]
+    (async done
+         (go
+           (if-not (<! (packet/project-exist? project-name))
+             (let [project (:id (:body (<! (packet/create-project {:name project-name}))))]
+                                        ;(<! (timeout 60000))
+               (is (true? (<! (packet/project-exist? "test"))))
+               (is (= 204 (:status (<! (packet/delete-project project)))))
+               (done)))))))
+
+#_(deftest organization-test
   (async done
-         (go (let [data    {:id               "e40d191d-4394-477c-b47d-2f08cc26a98a"
-                            :device           "foobar"
-                            :plan             "baremetal_0"
-                            :facility         "ewr1"
-                            :operating_system "ubuntu_16_04"}
-                   id      (:id data)
-                   opts    (dissoc data :id)
-                   m       (packet/bootstrap-packet-cljs)
-                   request (<! (martian/response-for m :create-device {:id            id
-                                                                       ::martian/body opts}))]
-               (is (= []
-                      request)))
-             (done))))
+         (go
+           (let [result  (<! (packet/list-organizations))]
+             (is (= 200 (:status result)))
+             (done)))))
+
+
+#_(deftest delete-test
+ (async done
+           (go
+             (is (= 200 (:status (<! (packet/delete-device (:device-id @test-state))))))
+             (<! (timeout 60000)) 
+             (is (= 200 (:status     (<! (packet/delete-project (:project-id @test-state)))
+             (done)))))))
+
