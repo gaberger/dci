@@ -1,52 +1,62 @@
 
-{:source-paths ["src" "test"]
+{:source-paths ["src"]
  :nrepl        {:port 8202}
  :dependencies [[martian-cljs-http "0.1.9"]
+                [me.raynes/fs "1.4.6"]
+                [prismatic/schema  "1.1.10"]
+                                        ; [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
                 [cljs-node-io "1.1.2"]]
  :deps         true
- :builds       {:main         {:target    :node-script
-                               :output-to "target/main.js"
-                               :release   {:compiler-options {:optimizations :simple}}
-                               :main      dci.main/main!}
-                :dci          {:target    :node-script
-                               :output-to "target/dci.js"
-                               :release   {:compiler-options {:optimizations :simple}}
-                               :main      dci.dci/main!}
-                :server       {:target    :node-script
-                               :output-to "target/dci-server.js"
-                               :release   {:compiler-options {:optimizations :simple}}
-                               :main      server.dci-server/main!}
-                :project      {:target    :node-script
-                               :output-to "target/dci-project.js"
-                               :release   {:compiler-options {:optimizations :simple}}
-                               :main      server.dci-project/main!}
-                :organization {:target    :node-script
-                               :output-to "target/dci-organization.js"
-                               :release   {:compiler-options {:optimizations :simple}}
-                               :main      server.dci-organization/main!}
-                :server-model {:target    :node-library
-                               :output-to "target/dci-model.js"
-                               :release   {:compiler-options {:optimizations :simple}}
-                               :exports   {:IServer server.dci-model/IServer}}
-                :packet-lib   {:target           :node-library
-                               :output-to        "target/packet.js"
-                               :compiler-options {:strip-name-suffixes #{"warn"}}
-                               :exports          {:PacketServer lib.packet/PacketServer}}
-                :state        {:target    :node-library
-                               :output-to "target/state.js"
-                               :exports   {:app-state dci.state/app-state}}
-                :utils        {:target    :node-library
-                               :output-to "target/utils.js"
-                               :exports   {:utils utils.core/utils}}
-                                        ;:exports   {:dump-object       utils.core/dump-object
-                                        ;            :update-project-id utils.core/update-project-id
-                                        ;            :initialize-state  utils.core/initialize-state
-                                        ;            :get-api-token     utils.core/get-api-token
-                                        ;            :state-file        utils.core/state-file
-                                        ;            :state-exists      utils.core/state-exists
-                                        ;            :projectid?        utils.core/projectid?
-                                        ;            :set-debug!        utils.core/set-debug!}}
-                :test         {:target    :node-test
-                               :output-to "out/packet-test.js"
-                               :ns-regexp "-test$"
-                               :autorun   true}}}
+ :builds       {;;:main         {:target    :node-script
+                ;;              :output-to "target/main.js"
+                ;;               :release   {:compiler-options {:optimizations :simple}}
+                ;;               :main      dci.main/main!}
+                :dci           {:target    :node-script
+                                :output-to "target/dci.js"
+                                :release   {:compiler-options {:optimizations :simple}}
+                                :main      dci.dci/main!}
+                :server        {:target    :node-script
+                                :output-to "target/dci-server.js"
+                                :release   {:compiler-options {:optimizations :simple}}
+                                :main      dci.commands.dci-server/main!}
+                :project       {:target    :node-script
+                                :output-to "target/dci-project.js"
+                                :release   {:compiler-options {:optimizations :simple}}
+                                :main      dci.commands.dci-project/main!}
+                :organization  {:target    :node-script
+                                :output-to "target/dci-organization.js"
+                                :release   {:compiler-options {:optimizations :simple}}
+                                :main      dci.commands.dci-organization/main!}
+                ;; :server-model  {:target    :node-library
+                ;;                 :output-to "target/dci-model.js"
+                ;;                 :release   {:compiler-options {:optimizations :simple}}
+                ;;                 :exports   {:IServer server.dci-model/IServer}}
+                :driver-packet {:target      :node-library
+                                :output-to   "target/packet.js"
+                                :exports-var dci.drivers.packet/exports}
+                :interfaces    {:target      :node-library
+                                :output-to   "target/interfaces.js"
+                                :exports-var dci.drivers.interfaces/exports}
+                :state         {:target    :node-library
+                                :output-to "target/state.js"
+                                :exports   {:app-state dci.state/app-state}}
+                :utils         {:target      :node-library
+                                :output-to   "target/utils.js"
+                                :exports-var dci.utils.core/exports}
+                ;;                         ;            :update-project-id utils.core/update-project-id
+                ;;                         ;            :initialize-state  utils.core/initialize-state
+                ;;                         ;            :get-api-token     utils.core/get-api-token
+                ;;                         ;            :state-file        utils.core/state-file
+                ;;                         ;            :state-exists      utils.core/state-exists
+                ;;                         ;            :projectid?        utils.core/projectid?
+                ;;                         ;            :set-debug!        utils.core/set-debug!}}
+                ;;:driver-test   {:target    :node-test
+                ;;               :output-to "out/driver-test.js"
+                ;;                :ns-regexp "-test$"
+                ;;                :autorun   true}
+                ;; :server-test   {:target    :node-test
+                ;;                 :output-to "out/server-test.js"
+                ;;                 :ns-regexp "-test$"
+                ;;                 :autorun   true}
+                }}
+

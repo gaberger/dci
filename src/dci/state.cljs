@@ -1,6 +1,6 @@
 (ns dci.state)
 
 (def app-state (atom {:debug false
-                      :output nil
+                      :output :table
                       :runtime {}
                       :persist {}}))

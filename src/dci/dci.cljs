@@ -1,29 +1,17 @@
 (ns dci.dci
   (:require [commander]
-            [utils.core :as utils]
+            [dci.drivers.interfaces :as api]
+            [dci.drivers.packet]
+            [dci.utils.core :as utils]
             [prompts]
-            [cljs.nodejs.shell :as sh :include-macros true]
             [kitchen-async.promise :as p]
             [kitchen-async.promise.from-channel]
-            [cljs-uuid-utils.core :as uuid]
             [clojure.set :as set]
             [dci.state :refer [app-state]]
-            [server.dci-model :as model :refer [IServer]]
-            [lib.packet :as packet :refer [PacketServer]]
             [clojure.string :as str]))
 
-
-(defmulti command-actions identity)
-(defmethod command-actions :packet [& args]
-    (when (:debug @app-state) (println "command-actions" args))
-    (condp = (second args)
-      :print-organizations (model/print-organizations (PacketServer.))
-      :get-organizations   (model/get-organizations (PacketServer.))
-      (println "Error: unknown command" (second args))))
-
-
 (defn prompts-get-org [program]
-  (p/let [response   (command-actions (keyword (.-provider program)) :get-organizations)
+  (p/let [response  (api/get-organizations (keyword (.-provider program)) false)
           orgs (-> response :body :organizations)
           choices  (mapv #(-> %
                               (select-keys [:id :name])
@@ -42,8 +30,7 @@
    (prompts #js {:type     "text"
                  :name     "apikey"
                  :message  "Enter API Key"
-                 :validate (fn [x] (if (str/blank? x) "Enter API Key" true))
-                 })
+                 :validate (fn [x] (if (str/blank? x) "Enter API Key" true))})
    (p/then (fn [apikey]
              (let [key (.-apikey apikey)]
                (utils/set-env "APIKEY" key)
@@ -54,8 +41,7 @@
    (prompts #js {:type    "confirm"
                  :name    "save_state"
                  :message "Save APIKEY into statefile?"
-                 :initial false
-                 })
+                 :initial false})
    (p/then (fn [x]
              (when (.-save_state x)
                (do
@@ -64,16 +50,14 @@
                  #_(js/console.log (.-env js/process))))))))
 
 (defn command-handler []
-    (.. commander
-                    (version "0.0.1")
-                    (command "organization <command>" "Organization operations")
-                    (command "project <command>" "Project operations")
-                    (command "server <command>" "Server operations")
-                    (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet")
-                    (description "Dell \"Bare Metal Cloud\" Command Interface"))
-  #_(.parse  (.-argv js/process))
-  )
-
+  (.. commander
+      (version "0.0.1")
+      (command "organization <command>" "Organization operations")
+      (command "project <command>" "Project operations")
+      (command "server <command>" "Server operations")
+      (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet")
+      (description "Dell \"Bare Metal Cloud\" Command Interface"))
+  #_(.parse  (.-argv js/process)))
 
 (defn main! []
   (utils/update-environment)
@@ -81,22 +65,21 @@
   (swap! app-state assoc :output :json)
   (let [program  (command-handler)
         env-keys (utils/get-env-keys)]
+    (cond
+      (every? env-keys #{"APIKEY" "ORGANIZATION_ID"}) (p/do
+                                                        (.parse program (.-argv js/process)))
 
-        (cond
-          (every? env-keys #{"APIKEY" "ORGANIZATION_ID"}) (.parse program (.-argv js/process))
-
-          (contains? env-keys "ORGANIZATION_ID") (p/do
-                                                   (prompts-get-key program)
-                                                   (prompts-save-state)
-                                                   (.parse program (.-argv js/process)))
-          (contains? env-keys "APIKEY")          (p/do
-                                                   (prompts-get-org program)
-                                                   (prompts-save-state)
-                                                   (.parse program (.-argv js/process)))
-          :else                                  (p/do
-                                                   (prompts-get-key program)
-                                                   (prompts-get-org program)
-                                                   (prompts-save-state)
-                                                   (.parse program (.-argv js/process)))
-          )))
+      (contains? env-keys "ORGANIZATION_ID") (p/do
+                                               (prompts-get-key program)
+                                               (prompts-save-state)
+                                               (.parse program (.-argv js/process)))
+      (contains? env-keys "APIKEY")          (p/do
+                                               (prompts-get-org program)
+                                               (prompts-save-state)
+                                               (.parse program (.-argv js/process)))
+      :else                                  (p/do
+                                               (prompts-get-key program)
+                                               (prompts-get-org program)
+                                               (prompts-save-state)
+                                               (.parse program (.-argv js/process))))))
 
