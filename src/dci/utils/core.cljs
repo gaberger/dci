@@ -42,6 +42,10 @@
 (defn read-config-file []
   (read-string (slurp config-file)))
 
+(defn read-service-file [file]
+  (println "read-service-file" file)
+  (read-string (slurp file)))
+
 (defn dump-object [obj]
   (println "###########")
   (println (.inspect util obj)))

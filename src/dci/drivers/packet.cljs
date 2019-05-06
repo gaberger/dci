@@ -180,6 +180,7 @@
     (let [result   (<! (read-request :get-projects {:organization-id organization-id}))
           projects (-> result :body :projects)
           names    (into #{} (map :name projects))]
+      (when (:debug @app-state) (println "project-exists project" name organization-id (contains? names name)))
       (contains? names name))))
 
 (defn- get-projects [organization-id & options]
@@ -215,14 +216,14 @@
         :table (utils/print-table coll)
         (utils/print-table coll)))))
 
-(defn create-project [organization-id & options]
-  (when (:debug @app-state)  (println "calling create-project" organization-id))
+(defn create-project [organization-id project-name & options]
+  (when (:debug @app-state)  (println "calling create-project" organization-id project-name))
   (go
-    (when (<! (project-exist? {:organization-id organization-id :name name}))
+    (when (<! (project-exist? {:organization-id organization-id :name project-name}))
       (do
         (println "Error: Project" name "already exists")
         nil)))
-  (write-request :create-project {:organization-id organization-id} (first options)))
+  (write-request :create-project {:organization-id organization-id} {:name project-name}))
 
 (defn delete-project [project-id & options]
   (println "calling delete-project" project-id)
@@ -338,15 +339,15 @@
       (contains? names name))))
 
 (defn create-device [project-id {:keys [hostname facility tags plan operating_system] :as args}]
-  (when (:debug @app-state)  (println "calling create-device" args))
+  (when (:debug @app-state)  (println "calling create-device" project-id args))
   (go
     (if (<! (device-exist-project? {:project-id project-id :name hostname}))
         (println "Error: Device" hostname "already exists")
         (write-request :create-device {:project-id project-id} {:hostname         hostname
-                                                          :facility         facility
-                                                          :tags             [tags]
-                                                          :plan             plan
-                                                          :operating_system operating_system}))))
+                                                                :facility         facility
+                                                                :tags             [tags]
+                                                                :plan             plan
+                                                                :operating_system operating_system}))))
 
 (defn get-device [device-id & options]
   (when (:debug @app-state) (println "calling get-device" device-id))
@@ -372,9 +373,22 @@
         :table (utils/print-table device)
         (utils/print-table device)))))
 
-(defn- get-project [project-id]
+(defn- get-project [project-id & options]
   (when (:debug @app-state)  (println "calling get-project" project-id))
   (read-request :get-project {:project-id project-id}))
+
+(defn- get-project-id [organization-id project-name]
+  (when (:debug @app-state)  (println "calling get-project-id" project-name))
+  (go
+    (let [result      (<! (read-request :get-projects {:organization-id organization-id}))
+          projects    (-> result :body :projects )
+          sel-project (filterv #(= (:name %) project-name) projects)
+          project-id (-> sel-project first :id)
+          ]
+      (when (:debug @app-state (println "get-project-id" project-name project-id)))
+      project-id)))
+
+
 
 (defn- get-project-name [project-id]
   (when (:debug @app-state)  (println "calling get-project-name" project-id))
@@ -389,7 +403,7 @@
 (defmethod api/project-exist? :packet [_  & options] (project-exist? (first options)))
 (defmethod api/get-projects :packet [_  organization-id & options] (get-projects organization-id (first options)))
 (defmethod api/print-projects :packet [_ organization-id & options] (print-projects organization-id (first options)))
-(defmethod api/create-project :packet [_ organization-id & options] (create-project organization-id (first options)))
+(defmethod api/create-project :packet [_ organization-id project-name & options] (create-project organization-id project-name (first options)))
 (defmethod api/delete-project :packet [_  project-id & options] (delete-project project-id (first options)))
 (defmethod api/get-devices-organization :packet [_ organization-id & options] (get-devices-organization organization-id (first options)))
 (defmethod api/print-devices-organization :packet [_ organization-id & options] (print-devices-organization organization-id (first options)))
@@ -402,9 +416,9 @@
 (defmethod api/print-device :packet [_ device-id & options] (print-device device-id (first options)))
 (defmethod api/get-device :packet   [_ device-id & options] (get-device device-id (first options)))
 (defmethod api/print-project :packet [_ & options] (print-project (first options)))
-(defmethod api/get-project :packet  [_ & options] (get-project (first options)))
+(defmethod api/get-project :packet  [_  project-id & options] (get-project project-id (first options)))
 (defmethod api/get-project-name :packet  [_ project-id] (get-project-name project-id ))
-
+(defmethod api/get-project-id :packet [_ organization-id project-name] (get-project-id organization-id project-name))
 (def exports #js {})
 
 

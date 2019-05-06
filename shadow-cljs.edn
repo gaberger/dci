@@ -22,6 +22,10 @@
                                 :output-to "target/dci-organization.js"
                                 :release   {:compiler-options {:optimizations :simple}}
                                 :main      dci.commands.dci-organization/main!}
+                :service       {:target    :node-script
+                                :output-to "target/dci-service.js"
+                                :release   {:compiler-options {:optimizations :simple}}
+                                :main      dci.commands.dci-service/main!}
                 :driver-packet {:target      :node-library
                                 :output-to   "target/packet.js"
                                 :exports-var dci.drivers.packet/exports}

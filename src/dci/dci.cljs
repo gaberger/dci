@@ -55,6 +55,7 @@
       (command "organization <command>" "Organization operations")
       (command "project <command>" "Project operations")
       (command "server <command>" "Server operations")
+      (command "service <command>" "Service operations")
       (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet")
       (description "DataCenter \"Bare Metal Cloud\" Command Interface")))
 

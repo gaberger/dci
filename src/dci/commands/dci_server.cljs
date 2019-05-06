@@ -11,14 +11,6 @@
             [dci.state :refer [app-state]]))
 
 (enable-console-print!)
-(defn create-handler [args]
-  (let [[command project-id hostname plan facilities operating-system] args]
-    (println "calling create-handler" (count args))
-    #_(dump-object (last args))))
-
-
-;TODO Option does not deal with XOR
-
 
 (defn command-handler []
   (let [program (.. commander

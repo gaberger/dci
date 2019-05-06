@@ -1,5 +1,4 @@
 (ns dci.drivers.interfaces)
-(defmulti g "Better function" {:arglists '([x])} (fn [x] :blah))
 
 (defmulti get-organizations "Get Organizations Resource" {:arglists '([driver])}
   (fn [driver] driver) :default :packet)
@@ -22,14 +21,15 @@
 (defmulti get-device "Get Device Resource" {:arglists '([driver device-id])} (fn [driver device-id & options] driver))
 (defmulti print-device "Print Device Rsource" {:arglists '([driver device-id])} (fn [driver device-id & options] driver))
 
-(defmulti get-project "Get Project Resource" {:arglists '([driver organization-id])} (fn [driver organization-id & options] driver))
+(defmulti get-project "Get Project Resource" {:arglists '([driver project-id])} (fn [driver project-id & options] driver))
 (defmulti print-project "Print Project Resource" {:arglists '([driver organization-id])} (fn [driver organization-id & options] driver))
 (defmulti get-project-name "Get Project Name From ID" {:arglists '([driver project-id])} (fn [driver project-id & options] driver))
+(defmulti get-project-id "Get Project ID From Name" {:arglists '([driver organizaton-id project-name])} (fn [driver organization-id project-name & options] driver))
 
 (defmulti project-exist? "Does Project Exist?" (fn [driver & options] driver))
 
-(defmulti create-project "Create Project"  {:arglists '([driver organization-id options])}
-  (fn [driver organization-id & options] driver))
+(defmulti create-project "Create Project"  {:arglists '([driver organization-id project-name options])}
+  (fn [driver organization-id project-name & options] driver))
 (defmulti delete-project "Delete Project"  {:arglists '([driver project-id options])} (fn [driver project-id & options] driver))
 
 (defmulti device-exist? "Does Device Exist?" (fn [driver project-or-organization & options] [driver project-or-organization]))

@@ -1,7 +1,9 @@
-[{:service  :etcd
-  :count    3
-  :plan     :baremetal_0
-  :location [:ewr1]
-  :os       :ubuntu_16-04
+[{:organization-id  :60bdbe9f-10c2-4ac9-bc75-6fd635f52daa
+  :project-name     "etcd1"
+  :service          :etcd
+  :count            3
+  :plan             :baremetal_0
+  :facilities       [:ewr1]
+  :operating_system :ubuntu_16_04
   }
- }]
+ ]
