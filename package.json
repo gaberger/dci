@@ -22,7 +22,8 @@
     "iconv-lite": "^0.4.19",
     "prompts": "^2.0.4",
     "ssh2shell": "^1.9.1",
-    "xhr2": "^0.1.4"
+    "xhr2": "^0.1.4",
+    "xmlhttprequest": "^1.8.0"
   },
   "pkg": {
     "scripts": "target/**/*.js",

@@ -15,20 +15,24 @@
 (defn command-handler []
   (let [program (.. commander
                     (version "0.0.1")
-                    (description "Project Module")
+                    (description "Organization Module")
                     (option "-D --debug" "Debug")
                     (option "-J --json" "Output to JSON")
                     (option "-E --n" "Output to JSON")
                     (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet"))]
 
     (.. program
-        (description "List Organizations")
         (command "list")
         (action (fn []
                   (when (.-debug program) (utils/set-debug!))
                   (api/print-organizations (keyword (.-provider program))))))
+    (.. program
+        (command "*")
+        (action (fn []
+                  (.help program #(clojure.string/replace % #"dci-organization" "organization")))))
 
     (.parse program (.-argv js/process))
+
     (cond
       (.-json program) (swap! app-state assoc :output :json)
       (.-edn program)  (swap! app-state assoc :output :edn)
@@ -41,7 +45,7 @@
 
     (cond (= (.-args.length program) 0)
           (.. program
-              (help #(clojure.string/replace % #"dci-organiztion" "organization"))))))
+              (help #(clojure.string/replace % #"dci-organization" "organization"))))))
 
 (defn main! []
   (command-handler))

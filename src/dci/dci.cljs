@@ -56,8 +56,16 @@
       (command "project <command>" "Project operations")
       (command "server <command>" "Server operations")
       (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet")
-      (description "Dell \"Bare Metal Cloud\" Command Interface"))
-  #_(.parse  (.-argv js/process)))
+      (description "DataCenter \"Bare Metal Cloud\" Command Interface")))
+
+(defn handle-command-default [cmd]
+  (.on cmd "command:*" (fn [e]
+                         (when-not
+                             (contains?
+                              (into #{}
+                                    (keys (js->clj (.-_execs cmd))))
+                              (first e))
+                           (.help cmd)))))
 
 (defn main! []
   (utils/update-environment)
@@ -65,21 +73,28 @@
   (swap! app-state assoc :output :json)
   (let [program  (command-handler)
         env-keys (utils/get-env-keys)]
+    
     (cond
-      (every? env-keys #{"APIKEY" "ORGANIZATION_ID"}) (p/do
+      (every? env-keys #{"APIKEY" "ORGANIZATION_ID"}) (do
+                                                        (handle-command-default program)
                                                         (.parse program (.-argv js/process)))
 
       (contains? env-keys "ORGANIZATION_ID") (p/do
                                                (prompts-get-key program)
                                                (prompts-save-state)
+                                               (handle-command-default program)
                                                (.parse program (.-argv js/process)))
       (contains? env-keys "APIKEY")          (p/do
                                                (prompts-get-org program)
                                                (prompts-save-state)
+                                               (handle-command-default program)
                                                (.parse program (.-argv js/process)))
       :else                                  (p/do
                                                (prompts-get-key program)
                                                (prompts-get-org program)
                                                (prompts-save-state)
-                                               (.parse program (.-argv js/process))))))
+                                               (handle-command-default program)
+                                               (.parse program (.-argv js/process))))
+
+  ))
 

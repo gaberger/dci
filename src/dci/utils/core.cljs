@@ -56,10 +56,11 @@
   (into #{} (-> (obj/getKeys (.-env js/process)) (js->clj) )))
 
 (defn initialize-state []
-  (let [state {:lastrun (js/Date.)
+  (if-not (state-exists)
+    (let [state {:lastrun (js/Date.)
                :runtime {:project-id nil
                          :project-name nil}}]
-    (write-state-file state)))
+    (write-state-file state))))
 
 (defn save-state []
   (let [runtime (:runtime @app-state)

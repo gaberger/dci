@@ -27,10 +27,9 @@
                     (option "-D --debug" "Debug")
                     (option "-J --json" "Output to JSON")
                     (option "-E --edn" "Output to EDN")
-                    (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet"))]
+                    (option "-P --provider <provider>" "Provider"  #"(?i)(packet|vultr)$" "packet"))]
 
     (.. program
-        (description "Bare Metal Cloud Servers. Requires project-id")
         (command "list")
         (arguments "[project-id]")
         (option "-T --tag <tag>" "Filter list by tag")
@@ -41,7 +40,7 @@
                                      :else (.help cmd (fn [t] t)))
                         tag (if (.-tag cmd) {:filter (.-tag cmd)} {:filter []})]
                     (when (= (:output @app-state) :table)
-                      (p/let [project-name  (api/get-project-name (keyword (.-provider program)) {:project-id project-id})]
+                      (p/let [project-name  (api/get-project-name (keyword (.-provider program)) project-id)]
                         (println "Using Project:" project-name "\nID:" project-id)))
                     (api/print-devices-project (keyword (.-provider program))  project-id {:tag tag})))))
 
@@ -59,9 +58,9 @@
                                      :else (.help cmd (fn [t] t)))
                         hostname'      (str hostname)
                         plan'          (or (.-plan cmd) "baremetal_0")
-                        tags'          (if (.-tags cmd) (str/split (.-tags program) #",") nil)
-                        facilities'    (if (.-facilities cmd) (str/split (.-facilities cmd) #",") ["ewr1"])
-                        os'            (if (.-os cmd) (str/split (.-os cmd) #",") "ubuntu_16_04")
+                        tags'          (or (.-tags cmd)  nil)
+                        facilities'    (or (.-facilities cmd) ["ewr1"])
+                        os'            (or (.-os cmd) "ubuntu_16_04")
                         args           {:hostname         hostname'
                                         :plan             plan'
                                         :facility         facilities'
@@ -71,11 +70,15 @@
 
     (.. program
         (command "delete <device-id>")
-        (description "Delete Bare Metal Cloud Server. Requires device-id")
         (action (fn [device-id options]
                   (api/delete-device (keyword (.-provider program)) device-id))))
+    (.. program
+        (command "*")
+        (action (fn []
+                  (.help program #(clojure.string/replace % #"dci-server" "server")))))
 
     (.parse program (.-argv js/process))
+
     (cond
       (.-json program) (swap! app-state assoc :output :json)
       (.-edn program)  (swap! app-state assoc :output :edn)

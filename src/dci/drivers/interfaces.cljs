@@ -24,7 +24,7 @@
 
 (defmulti get-project "Get Project Resource" {:arglists '([driver organization-id])} (fn [driver organization-id & options] driver))
 (defmulti print-project "Print Project Resource" {:arglists '([driver organization-id])} (fn [driver organization-id & options] driver))
-(defmulti get-project-name "Get Project Name From ID" (fn [driver & options] driver))
+(defmulti get-project-name "Get Project Name From ID" {:arglists '([driver project-id])} (fn [driver project-id & options] driver))
 
 (defmulti project-exist? "Does Project Exist?" (fn [driver & options] driver))
 

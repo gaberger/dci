@@ -22,17 +22,15 @@
                     (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet"))]
 
     (.. program
-        (description "Switch Project ID")
         (command "change <project-id>")
         (action (fn [project-id]
                   (when (.-debug program) (swap! app-state assoc :debug true))
-                  (p/let [result (api/get-project (keyword (.-provider program)) {:project-id project-id})
+                  (p/let [result (api/get-project (keyword (.-provider program)) project-id)
                           name (-> result :body :name)]
-                    (utils/update-project-id project-id name))
-                  (println "Switching to Project" project-id))))
+                    (utils/update-project-id project-id name)
+                    (println "Switching to Project" name)))))
 
     (.. program
-        (description "List Projects")
         (command "list")
         (action (fn []
                   (when (.-debug program) (utils/set-debug!))
@@ -40,7 +38,6 @@
                     (api/print-projects (keyword (.-provider program)) organization-id)))))
 
     (.. program
-        (description "Create Project")
         (command "create <project-name>")
         (action (fn [project-name]
                   (println :DEBUG project-name)
@@ -49,12 +46,15 @@
                     (api/create-project (keyword (.-provider program)) organization-id {:name project-name})))))
 
     (.. program
-        (description "Delete Project")
         (command "delete <project-id>")
         (action (fn [projectId]
                   (when (.-debug program) (utils/set-debug!))
                   (api/delete-project
                    (keyword (.-provider program)) projectId))))
+    (.. program
+        (command "*")
+        (action (fn []
+                  (.help program #(clojure.string/replace % #"dci-organization" "organization")))))
 
     (.parse program (.-argv js/process))
     (cond

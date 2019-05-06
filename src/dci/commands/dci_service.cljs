@@ -29,7 +29,6 @@
                     (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet"))]
 
     (.. program
-        (description "Create Service")
         (command "create <name>")
         (action (fn [name]
                   (when (.-debug program) (swap! app-state assoc :debug true))
@@ -38,6 +37,10 @@
                       (let [project-name (<! chan)]
                         (utils/update-project-id project-id project-name))
                       (println "Switching to Project" project-id))))))
+    (.. program
+        (command "*")
+        (action (fn []
+                  (.help program #(clojure.string/replace % #"dci-service" "service")))))
 
     (.parse program (.-argv js/process))
     (cond
