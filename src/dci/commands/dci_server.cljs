@@ -3,6 +3,7 @@
             [util]
             [dci.drivers.interfaces :as api]
             [dci.drivers.packet]
+            [cljs.core.async :refer [<! >! timeout take! chan] :refer-macros [go go-loop]]
             [kitchen-async.promise :as p]
             [kitchen-async.promise.from-channel]
             [cljs.pprint :as pprint]
@@ -28,9 +29,9 @@
         (action (fn [project-id cmd]
                   (let [project-id (cond
                                      (some? (utils/get-env "PROJECT_ID")) (utils/get-env "PROJECT_ID")
-                                     (string? project-id) project-id
-                                     :else (.help cmd (fn [t] t)))
-                        tag (if (.-tag cmd) {:filter (.-tag cmd)} {:filter []})]
+                                     (string? project-id)                 project-id
+                                     :else                                (.help cmd (fn [t] t)))
+                        tag        (if (.-tag cmd) {:filter (.-tag cmd)} {:filter []})]
                     (when (= (:output @app-state) :table)
                       (p/let [project-name  (api/get-project-name (keyword (.-provider program)) project-id)]
                         (println "Using Project:" project-name "\nID:" project-id)))
@@ -44,26 +45,46 @@
         (option "-O --os <os>" "Select Operating System")
         (option "-T --tags <tags>" "Comma seperated list of tags to apply to metadata")
         (action (fn [hostname project-id cmd]
-                  (let [project-id (cond
-                                     (some? (utils/get-env "PROJECT_ID")) (utils/get-env "PROJECT_ID")
-                                     (string? project-id) project-id
-                                     :else (.help cmd (fn [t] t)))
-                        hostname'      (str hostname)
-                        plan'          (or (.-plan cmd) "baremetal_0")
-                        tags'          (or (.-tags cmd)  nil)
-                        facilities'    (or (.-facilities cmd) ["ewr1"])
-                        os'            (or (.-os cmd) "ubuntu_16_04")
-                        args           {:hostname         hostname'
-                                        :plan             plan'
-                                        :facility         facilities'
-                                        :tags             tags'
-                                        :operating_system os'}]
-                    (api/create-device (keyword (.-provider program)) project-id args)))))
+                  (go
+                    (let [project-id    (cond
+                                          (some? (utils/get-env "PROJECT_ID")) (utils/get-env "PROJECT_ID")
+                                          (string? project-id)                 project-id
+                                          :else                                (.help cmd (fn [t] t)))
+                          hostname'   (str hostname)
+                          plan'       (or (.-plan cmd) "baremetal_0")
+                          tags'       (or (.-tags cmd)  nil)
+                          facilities' (or (.-facilities cmd) ["ewr1"])
+                          os'         (or (.-os cmd) "ubuntu_16_04")
+                          args        {:hostname         hostname'
+                                       :plan             plan'
+                                       :facility         facilities'
+                                       :tags             tags'
+                                       :operating_system os'}
+                          device (<! (api/create-device (keyword (.-provider program)) project-id args))
+                          ]
+                      (if (contains? device :body)
+                        (println "Device" (:id (:body device)) "created")
+                        (println "Device" device "exists")
+                        ))))))
 
     (.. program
         (command "delete <device-id>")
         (action (fn [device-id options]
-                  (api/delete-device (keyword (.-provider program)) device-id))))
+                  (p/let [organization-id (utils/get-env "ORGANIZATION_ID")
+                          result (api/get-devices-organization (keyword (.-provider program)) organization-id)
+                          devices (-> result :body :devices)
+                          device-ids (into #{} (mapv :id devices))
+                          device-selector  (utils/prefix-match device-id device-ids)]
+                    (if (some? device-selector)
+                      (do
+                        (api/delete-device (keyword (.-provider program)) device-selector)
+                        (println "Delete device " device-selector))
+                      (if (contains? device-ids device-id)
+                        (do
+                          (api/delete-device (keyword (.-provider program)) device-id)
+                          (println "Delete device " device-selector))
+                        (println "Error: Device " device-id "doesn't exist")))))))
+
     (.. program
         (command "*")
         (action (fn []
@@ -80,9 +101,9 @@
                               (swap! app-state assoc :debug true)
                               (pprint/pprint @app-state)))
 
-    (cond (= (.-args.length program) 0)
-          (.. program
-              (help #(clojure.string/replace % #"dci-server" "server"))))))
+  (cond (= (.-args.length program) 0)
+        (.. program
+            (help #(clojure.string/replace % #"dci-server" "server"))))))
 
 (defn main! []
   (command-handler))

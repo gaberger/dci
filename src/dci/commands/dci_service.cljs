@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [kitchen-async.promise :as p]
             [kitchen-async.promise.from-channel]
+            [cljs.core.async :refer [<! >! timeout take! chan] :refer-macros [go go-loop]]
             [dci.drivers.interfaces :as api]
             [dci.drivers.packet]
             [dci.utils.core :as utils]
@@ -29,38 +30,28 @@
     ;;:os       :ubuntu_16-04
     ;; }
     ;;]
-
+    ;TODO Change to batch
     (.. program
         (command "create <service-file>")
         (action (fn [service-file]
                   (when (.-debug program) (swap! app-state assoc :debug true))
+                  (println :DEBUG service-file)
                   (let [service-spec (utils/read-service-file service-file)]
                     (doall
                      (map (fn [m]
                             (p/let [{:keys [organization-id project-name service count plan facilities operating_system]} m
-                                    organization-id (name organization-id)
-                                    project-exist? (api/project-exist? (keyword (.-provider program))
-                                                                       {:organization-id organization-id :name project-name})]
-                              (if-not project-exist?
-                                (p/let [result (api/create-project (keyword (.-provider program)) organization-id project-name)
-                                        project-id (-> result :body :id)]
-                                  (dotimes [x count]
-                                    (api/create-device (keyword (.-provider program)) project-id {:plan             (name plan)
-                                                                                                  :hostname         (str (name service) "-" x)
-                                                                                                  :operating_system (name operating_system)
-                                                                                                  :tags             (name service)
-                                                                                                  :facility         (mapv name facilities)})
-                                    ))
-                                (p/let [project-id (api/get-project-id (keyword (.-provider program)) organization-id  project-name)]
-                                  (println :DEBUG :PROJECT-ID project-id)
-                                  (dotimes [x count]
-                                    (api/create-device (keyword (.-provider program)) project-id {:plan             (name plan)
-                                                                                                  :hostname         (str (name service) "-" x)
-                                                                                                  :operating_system (name operating_system)
-                                                                                                  :tags             (name service)
-                                                                                                  :facility         (mapv name facilities)
-                                                                                                  })))
-                               )))
+                                    organization-id (name organization-id)]
+                              (go
+                                (let [project    (<! (api/create-project (keyword (.-provider program)) organization-id project-name))
+                                      project-id (if (contains? project :body) (:id (:body project)) project)]
+                                      (dotimes [x count]
+                                        (api/create-device
+                                         (keyword (.-provider program))
+                                         project-id {:plan             (name plan)
+                                                     :hostname         (str (name service) "-" x)
+                                                     :operating_system (name operating_system)
+                                                     :tags             (name service)
+                                                     :facility         (mapv name facilities)}))))))
                           service-spec))))))
 
     (.. program

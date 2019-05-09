@@ -2,6 +2,7 @@
  :nrepl        {:port 8202}
  :dependencies [[martian-cljs-http "0.1.9"]
                 [me.raynes/fs "1.4.6"]
+                [clj-fuzzy "0.4.1"]
                 [prismatic/schema  "1.1.10"]
                                         ; [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
                 [cljs-node-io "1.1.2"]]

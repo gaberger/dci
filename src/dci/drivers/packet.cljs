@@ -2,10 +2,11 @@
   (:require [martian.core :as martian]
             [martian.cljs-http :as martian-http]
             [util]
-            [xhr2]
-            [xmlhttprequest :refer [XMLHttpRequest]]
+            [w3c-xmlhttprequest-plus :refer [XMLHttpRequest]]
             [schema.core :as s :include-macros true]
             [cljs.core.async :refer [<! >! timeout take! chan] :refer-macros [go go-loop]]
+            [kitchen-async.promise :as p]
+            [kitchen-async.promise.from-channel]
             [clojure.string :as str]
             [clojure.walk :refer [postwalk]]
             [clojure.pprint :as pprint]
@@ -13,7 +14,7 @@
             [dci.drivers.interfaces :as api]
             [dci.utils.core :as utils]))
 
-(set! js/XMLHttpRequest xhr2)
+;(set! js/XMLHttpRequest xhr2)
 (set! js/XMLHttpRequest XMLHttpRequest) ;; weird status response
 
 
@@ -21,6 +22,13 @@
   {:name  ::add-authentication-header
    :enter (fn [ctx]
             (assoc-in ctx [:request :headers "X-Auth-Token"] (utils/get-env "APIKEY")))})
+
+
+(def add-proxy-header
+  {:name  ::add-proxy-header
+   :enter (fn [ctx]
+            (assoc-in ctx [:request :headers] {"Access-Control-Request-Headers" "Host"
+                                               "Host"                         "api.packet.net"}))})
 
 (defn bootstrap-packet-cljs []
   (martian-http/bootstrap "https://api.packet.net"
@@ -59,11 +67,11 @@
                             :method      :post
                             :produces    ["application/json"]
                             :consumes    ["application/json"]
-                            :body-schema {:hostname         s/Any
-                                          :facility         [s/Any]
-                                          :tags             [s/maybe s/Str]
-                                          :plan             s/Any
-                                          :operating_system s/Any}}
+                            :body-schema {:device {:hostname         s/Str
+                                                   :facility         [s/Str]
+                                                   :tags             [(s/maybe s/Str)]
+                                                   :plan             s/Str
+                                                   :operating_system s/Str}}}
                            {:route-name  :create-project
                             :path-parts  ["/organizations/" :organization-id "/projects"]
                             :path-schema {:organization-id s/Str}
@@ -71,10 +79,10 @@
                             :method      :post
                             :produces    ["application/json"]
                             :consumes    ["application/json"]
-                            ;;:query-params {:exclude ["devices" "members" "memberships"
-                            ;;                        "invitations" "max_devices" "ssh_keys"]
-                            ;;               }
-                            :body-schema {:name s/Any}}
+                                        ;:query-params {:exclude ["devices" "members" "memberships"
+                                        ;                         "invitations" "max_devices" "ssh_keys"]}
+                            :body-schema {:project {:name s/Str}}
+                            }
                            {:route-name  :delete-project
                             :path-parts  ["/projects/" :project-id]
                             :path-schema {:project-id s/Str}
@@ -92,6 +100,7 @@
                             :path-schema {:device-id s/Str}}]
                           {:interceptors (concat
                                           [add-authentication-header]
+                                          #_[add-proxy-header]
                                           martian-http/default-interceptors)}))
 
 (defn response-handler [response]
@@ -112,23 +121,19 @@
       401 (error-and-exit)
       404 (error-and-exit)
       422 (error-and-exit)
-      406 body
+      406 {:status 406 :body body}
       200 {:status 200 :body body}
       201 {:status 201 :body body}
       204 {:status 204 :body body}
       (error-and-exit))))
 
-(defn write-request [k path-m body]
-  (when (:debug @app-state) (println "write-request" k path-m body))
-  (go  (let [m        (bootstrap-packet-cljs)
-             _        (when (:debug @app-state)
-                        (do
-                          (println "Path" path-m "Body" body)
-                          (println "DryRun" (martian/request-for m k (merge
-                                                                      path-m
-                                                                      {::martian/body body})))))
-             response (<! (martian/response-for m k (merge path-m
-                                                           {::martian/body body})))]
+(defn write-request [k body]
+  (when (:debug @app-state) (println "write-request" k body))
+  (go  (let [m    (bootstrap-packet-cljs)
+             _    (when (:debug @app-state)
+                    (do
+                      (println "DryRun" (martian/request-for m k body))))
+             response (<! (martian/response-for m k body))]
          (response-handler response))))
 
 (defn read-request
@@ -177,11 +182,13 @@
 (defn project-exist? [{:keys [organization-id name]}]
   (when (:debug @app-state) (println "calling project-exists?" name))
   (go
-    (let [result   (<! (read-request :get-projects {:organization-id organization-id}))
-          projects (-> result :body :projects)
-          names    (into #{} (map :name projects))]
-      (when (:debug @app-state) (println "project-exists project" name organization-id (contains? names name)))
-      (contains? names name))))
+    (let [result    (<! (read-request :get-projects {:organization-id organization-id}))
+          projects  (-> result :body :projects)
+          project-m (filterv #(= (:name %) name) projects)]
+      (when (:debug @app-state) (println "project-exist organization" name organization-id  project-m))
+      (if-not (empty? project-m)
+        (-> project-m first :id)
+        nil))))
 
 (defn- get-projects [organization-id & options]
   (when (:debug @app-state) (println "calling get-projects"))
@@ -216,14 +223,19 @@
         :table (utils/print-table coll)
         (utils/print-table coll)))))
 
+
 (defn create-project [organization-id project-name & options]
   (when (:debug @app-state)  (println "calling create-project" organization-id project-name))
   (go
-    (when (<! (project-exist? {:organization-id organization-id :name project-name}))
-      (do
-        (println "Error: Project" name "already exists")
-        nil)))
-  (write-request :create-project {:organization-id organization-id} {:name project-name}))
+    (let [project-id (<! (project-exist? {:organization-id organization-id :name project-name}))]
+      (when (:debug @app-state) (println "create-project" project-id))
+      (if (some? project-id)
+        project-id
+        #_(do (binding [*print-fn* *print-err-fn*]
+            (println "Error: Project" project-name "already exists"))
+            project-id)
+        (write-request :create-project {:organization-id organization-id
+                                        :name            project-name})))))
 
 (defn delete-project [project-id & options]
   (println "calling delete-project" project-id)
@@ -322,32 +334,48 @@
 
 (defn device-exist-project? [{:keys [project-id name]}]
   (when (:debug @app-state) (println "calling device-exists?" name))
-  (go
-    (let [result   (<! (get-devices-project project-id))
-          devices (-> result :body :devices)
-          names (into #{} (map :hostname devices))]
-      (when (:debug @app-state) (println "Device-exists project" name project-id (contains? names name)))
-      (contains? names name))))
+    (go
+      (let [result  (<! (get-devices-project project-id))
+            devices (-> result :body :devices)
+            device-m (filterv #(= (:hostname %) name) devices)]
+            ;names   (into #{} (map :hostname devices))]
+        (when (:debug @app-state) (println "Device-exists project" name project-id))
+      (if-not (empty? device-m)
+        (-> device-m first :id)
+        nil))))
+
+        ;(contains? names name))))
 
 (defn device-exist-organization? [{:keys [organization-id name]}]
   (when (:debug @app-state) (println "calling device-exists?" name))
   (go
     (let [result   (<! (get-devices-organization organization-id))
           devices (-> result :body :devices)
-          names (into #{} (map :hostname devices))]
-      (when (:debug @app-state) (println "Device-exists organization" name organization-id (contains? names name)))
-      (contains? names name))))
+          device-m (filterv #(= (:name %) name) devices)]
+         ; names (into #{} (map :hostname devices))]
+      (when (:debug @app-state) (println "Device-exists organization" name organization-id ))
+      (if-not (empty? device-m)
+        (-> device-m first :id)
+        nil))))
+      ;(contains? names name))))
 
 (defn create-device [project-id {:keys [hostname facility tags plan operating_system] :as args}]
   (when (:debug @app-state)  (println "calling create-device" project-id args))
   (go
-    (if (<! (device-exist-project? {:project-id project-id :name hostname}))
-        (println "Error: Device" hostname "already exists")
-        (write-request :create-device {:project-id project-id} {:hostname         hostname
-                                                                :facility         facility
-                                                                :tags             [tags]
-                                                                :plan             plan
-                                                                :operating_system operating_system}))))
+    (let [device-id (<! (device-exist-project? {:project-id project-id :name hostname}))]
+      (if (some? device-id)
+        device-id
+        #_(do (binding [*print-fn* *print-err-fn*]
+              (println "Error: Device" hostname "already exists"))
+            device-id)
+        (let [result (<! (write-request :create-device {:project-id project-id
+                                                        :device     {:hostname         hostname
+                                                                     :facility         facility
+                                                                     :tags             [tags]
+                                                                     :plan             plan
+                                                                     :operating_system operating_system}}))]
+          (when (:debug @app-state)  (println "result create device" result))
+          result)))))
 
 (defn get-device [device-id & options]
   (when (:debug @app-state) (println "calling get-device" device-id))

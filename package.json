@@ -18,12 +18,12 @@
     "ws": "^6.1.2"
   },
   "dependencies": {
+    "clj-fuzzy": "^0.4.1",
     "commander": "^2.20.0",
     "iconv-lite": "^0.4.19",
     "prompts": "^2.0.4",
     "ssh2shell": "^1.9.1",
-    "xhr2": "^0.1.4",
-    "xmlhttprequest": "^1.8.0"
+    "xhr2": "git+https://git@github.com/gaberger/node-xhr2#gaberger-patch-1"
   },
   "pkg": {
     "scripts": "target/**/*.js",

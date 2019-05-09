@@ -1,9 +1,10 @@
 (ns dci.utils.core
-  (:require [cljs-node-io.core :as io :refer [slurp spit ]]
+  (:require [cljs-node-io.core :as io :refer [slurp spit]]
             [cljs-node-io.fs :refer [fexists?]]
             [cljs.reader :refer [read-string]]
             [util]
             [path]
+            [clj-fuzzy :as fuz]
             [goog.object :as obj]
             [clojure.pprint :as pprint]
             [clojure.walk :refer [postwalk]]
@@ -17,11 +18,11 @@
   (pprint/pprint  obj))
 
 (defn print-json [obj]
-    (println (.stringify js/JSON (clj->js obj) nil " ")))
+  (println (.stringify js/JSON (clj->js obj) nil " ")))
 
 ;TODO filter empty set
 (defn print-table [obj]
-  (let [convert (postwalk #(if(and (set? %) (string? (first %))) (str/join "," %)  %) obj)]
+  (let [convert (postwalk #(if (and (set? %) (string? (first %))) (str/join "," %)  %) obj)]
     (pprint/print-table convert)))
 
 (defn state-exists []
@@ -51,20 +52,20 @@
   (println (.inspect util obj)))
 
 (defn get-env [v]
-  (aget (.-env js/process) v ))
+  (aget (.-env js/process) v))
 
 (defn- set-env [k v]
   (aset (.-env js/process) k v))
 
 (defn get-env-keys []
-  (into #{} (-> (obj/getKeys (.-env js/process)) (js->clj) )))
+  (into #{} (-> (obj/getKeys (.-env js/process)) (js->clj))))
 
 (defn initialize-state []
   (if-not (state-exists)
     (let [state {:lastrun (js/Date.)
-               :runtime {:project-id nil
-                         :project-name nil}}]
-    (write-state-file state))))
+                 :runtime {:project-id nil
+                           :project-name nil}}]
+      (write-state-file state))))
 
 (defn save-state []
   (let [runtime (:runtime @app-state)
@@ -72,7 +73,7 @@
                :runtime runtime}]
     (write-state-file state)))
 
-(defn save-config[]
+(defn save-config []
   (let [config (:persist @app-state)]
     (write-config-file config)))
 
@@ -92,7 +93,7 @@
 
 (defn update-state []
   (when-let [apikey (get-env "APIKEY")]
-        (swap! app-state assoc-in [:persist] {:apikey apikey}))
+    (swap! app-state assoc-in [:persist] {:apikey apikey}))
   (when-let [org-id (get-env "ORGANIZATION_ID")]
     (swap! app-state update-in [:persist] assoc :organization-id org-id)))
 
@@ -100,7 +101,7 @@
   (if (config-exists)
     (do
       (when-let [apikey (some-> (read-config-file) :apikey)]
-             (set-env "APIKEY" apikey))
+        (set-env "APIKEY" apikey))
       (when-let [org-id (some-> (read-config-file) :organization-id)]
         (set-env "ORGANIZATION_ID" org-id))))
   (if (state-exists)
@@ -115,13 +116,40 @@
      (assoc :lastrun (js/Date.))
      (assoc :runtime {:project-id id :project-name name})
      (write-state-file))
-     (update-environment)))
+    (update-environment)))
 
 (defn filter-pred [data filter]
   (into []
         (for [m data
               :let  [tags (:tags m)]
               :when (contains? tags filter)]
-      m)))
+          m)))
+
+(defn prefix-match [match coll]
+  (when (:debug @app-state) (println "prefix-match" match coll))
+  (let [matches (for [x     coll
+                      :when (str/starts-with? x match)]
+                  x)]
+    (if (or (> (count matches) 1)
+            (empty? matches))
+     nil
+     (first matches))))
+
+(defn selector [input coll]
+  (let [str->vec (mapv str input)
+        collv    (into [] coll)
+        accum    (atom [])]
+    (when (:debug @app-state) (println "selector" str->vec collv))
+    (reduce
+     (fn [acc x]
+       (let [match-string (str/join "" @accum)]
+         (when (:debug @app-state (println "match-string" match-string)))
+         (println :TRUTH (some? (prefix-match match-string collv)))
+         (when (some? (prefix-match match-string collv))
+             (reduced (first (prefix-match match-string collv))))
+       (swap! accum conj x))
+       )
+     []
+     str->vec)))
 
 (def exports #js {})
