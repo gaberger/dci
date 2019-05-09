@@ -14,7 +14,7 @@
 (enable-console-print!)
 
 (defn command-handler []
-  (let [program (.. commander
+  (p/let [program (.. commander
                     (version "0.0.1")
                     (description "Server Module")
                     (option "-D --debug" "Debug")
@@ -32,6 +32,7 @@
                                      (string? project-id)                 project-id
                                      :else                                (.help cmd (fn [t] t)))
                         tag        (if (.-tag cmd) {:filter (.-tag cmd)} {:filter []})]
+                    ;TODO Not working..
                     (when (= (:output @app-state) :table)
                       (p/let [project-name  (api/get-project-name (keyword (.-provider program)) project-id)]
                         (println "Using Project:" project-name "\nID:" project-id)))
@@ -46,10 +47,10 @@
         (option "-T --tags <tags>" "Comma seperated list of tags to apply to metadata")
         (action (fn [hostname project-id cmd]
                   (go
-                    (let [project-id    (cond
-                                          (some? (utils/get-env "PROJECT_ID")) (utils/get-env "PROJECT_ID")
-                                          (string? project-id)                 project-id
-                                          :else                                (.help cmd (fn [t] t)))
+                    (let [project-id  (cond
+                                        (some? (utils/get-env "PROJECT_ID")) (utils/get-env "PROJECT_ID")
+                                        (string? project-id)                 project-id
+                                        :else                                (.help cmd (fn [t] t)))
                           hostname'   (str hostname)
                           plan'       (or (.-plan cmd) "baremetal_0")
                           tags'       (or (.-tags cmd)  nil)
@@ -59,31 +60,22 @@
                                        :plan             plan'
                                        :facility         facilities'
                                        :tags             tags'
-                                       :operating_system os'}
-                          device (<! (api/create-device (keyword (.-provider program)) project-id args))
-                          ]
-                      (if (contains? device :body)
-                        (println "Device" (:id (:body device)) "created")
-                        (println "Device" device "exists")
-                        ))))))
+                                       :operating_system os'}]
+                        (api/create-device (keyword (.-provider program)) project-id args))))))
 
     (.. program
         (command "delete <device-id>")
-        (action (fn [device-id options]
+        (option "-F --force" "Force Delete")
+        (action (fn [device-id cmd]
                   (p/let [organization-id (utils/get-env "ORGANIZATION_ID")
-                          result (api/get-devices-organization (keyword (.-provider program)) organization-id)
-                          devices (-> result :body :devices)
-                          device-ids (into #{} (mapv :id devices))
-                          device-selector  (utils/prefix-match device-id device-ids)]
-                    (if (some? device-selector)
-                      (do
-                        (api/delete-device (keyword (.-provider program)) device-selector)
-                        (println "Delete device " device-selector))
-                      (if (contains? device-ids device-id)
-                        (do
+                          device-id (api/get-deviceid-prefix (keyword (.-provider program)) organization-id device-id)]
+                     (when (some? device-id)
+                        (if (.-force cmd)
                           (api/delete-device (keyword (.-provider program)) device-id)
-                          (println "Delete device " device-selector))
-                        (println "Error: Device " device-id "doesn't exist")))))))
+                          (p/let [delete? (utils/prompts-delete cmd (str "Delete Device: " device-id))]
+                            (when delete?
+                              (api/delete-device (keyword (.-provider program)) device-id)))))))))
+
 
     (.. program
         (command "*")
@@ -101,9 +93,10 @@
                               (swap! app-state assoc :debug true)
                               (pprint/pprint @app-state)))
 
-  (cond (= (.-args.length program) 0)
-        (.. program
-            (help #(clojure.string/replace % #"dci-server" "server"))))))
+
+    (cond (= (.-args.length program) 0)
+          (.. program
+              (help #(clojure.string/replace % #"dci-server" "server"))))))
 
 (defn main! []
   (command-handler))

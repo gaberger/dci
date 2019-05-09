@@ -3,6 +3,11 @@
             [cljs-node-io.fs :refer [fexists?]]
             [cljs.reader :refer [read-string]]
             [util]
+            [prompts]
+            [kitchen-async.promise :as p]
+            [kitchen-async.promise.from-channel]
+            [os]
+            [js-yaml :as yaml]
             [path]
             [clj-fuzzy :as fuz]
             [goog.object :as obj]
@@ -11,8 +16,10 @@
             [clojure.string :as str]
             [dci.state :refer [app-state]]))
 
-(def state-file ".dci-state.edn")
-(def config-file "dci-config.edn")
+(def state-file (str/join "/" [(.homedir os) ".dci-state.edn"]))
+(def config-file (str/join "/" [(.homedir os) "dci-config.edn"]))
+
+
 
 (defn print-edn [obj]
   (pprint/pprint  obj))
@@ -22,30 +29,55 @@
 
 ;TODO filter empty set
 (defn print-table [obj]
-  (let [convert (postwalk #(if (and (set? %) (string? (first %))) (str/join "," %)  %) obj)]
-    (pprint/print-table convert)))
+  (let [convert-set (postwalk #(if (and (set? %) (string? (first %))) (str/join "," %)  %) obj)
+        convert-keys (postwalk #(if (keyword? %) (name %) %) convert-set)]
+    (pprint/print-table convert-keys)))
+
+(defn read-yaml [string]
+ (try
+   [:ok (js->clj (yaml/load string) :keywordize-keys true)]
+   (catch js/Object e
+     [:error (js->clj e)])))
+
+(defn log-error [& msg]
+  #_(do (binding [*print-fn* *print-err-fn*]))
+  (js/console.error (str/join " " msg)))
 
 (defn state-exists []
   (fexists? state-file))
 
-(defn config-exists []
+(defn config-exists? []
   (fexists? config-file))
 
 (defn- write-state-file [data]
-  (spit state-file data))
+  (try
+    (spit state-file data)
+    (catch js/Object e
+        (js->clj e))))
 
 (defn- write-config-file [data]
-  (spit config-file data))
+  (try
+    (spit config-file data)
+    (catch js/Object e
+       (js->clj e))))
 
 (defn read-state-file []
-  (read-string (slurp state-file)))
+  (try
+    (read-string (slurp state-file))
+    (catch js/Object e
+       (js->clj e))))
 
 (defn read-config-file []
-  (read-string (slurp config-file)))
+  (try
+    (read-string (slurp config-file))
+    (catch js/Object e
+      (js->clj e))))
 
 (defn read-service-file [file]
-  (println "read-service-file" file)
-  (read-string (slurp file)))
+  (try
+    (read-string (slurp file))
+    (catch js/Object e
+       (js->clj e))))
 
 (defn dump-object [obj]
   (println "###########")
@@ -98,7 +130,7 @@
     (swap! app-state update-in [:persist] assoc :organization-id org-id)))
 
 (defn update-environment []
-  (if (config-exists)
+  (if (config-exists?)
     (do
       (when-let [apikey (some-> (read-config-file) :apikey)]
         (set-env "APIKEY" apikey))
@@ -126,30 +158,45 @@
           m)))
 
 (defn prefix-match [match coll]
-  (when (:debug @app-state) (println "prefix-match" match coll))
+  (when (:debug @app-state) (println "prefix-match" match))
   (let [matches (for [x     coll
                       :when (str/starts-with? x match)]
                   x)]
     (if (or (> (count matches) 1)
             (empty? matches))
-     nil
-     (first matches))))
+      nil
+      (do (when (:debug @app-state) (println "match" (first matches)))
+          (first matches)))))
 
 (defn selector [input coll]
   (let [str->vec (mapv str input)
         collv    (into [] coll)
         accum    (atom [])]
     (when (:debug @app-state) (println "selector" str->vec collv))
+    (conj accum (first str->vec))
     (reduce
      (fn [acc x]
        (let [match-string (str/join "" @accum)]
          (when (:debug @app-state (println "match-string" match-string)))
-         (println :TRUTH (some? (prefix-match match-string collv)))
          (when (some? (prefix-match match-string collv))
-             (reduced (first (prefix-match match-string collv))))
+             (reduced :FOO #_(prefix-match match-string collv)))
        (swap! accum conj x))
        )
      []
      str->vec)))
+
+
+(defn prompts-delete [program msg]
+    (->
+     (prompts #js {:type     "confirm"
+                   :name     "delete"
+                   :message  msg
+                   :validate (fn [x] (if (str/blank? x) msg true))})
+     (p/then (fn [x]
+               (if (.-delete x)
+                 true
+                 false)))))
+
+
 
 (def exports #js {})

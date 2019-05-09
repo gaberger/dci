@@ -13,17 +13,6 @@
 
 (enable-console-print!)
 
-(defn prompts-delete-project [program]
-  (->
-   (prompts #js {:type     "confirm"
-                 :name     "delete_project"
-                 :message  "Delete Project?"
-                 :validate (fn [x] (if (str/blank? x) "Delete Project?" true))})
-   (p/then (fn [x]
-             (if (.-delete_project x)
-               true
-               false)))))
-
 (defn command-handler []
   (let [program (.. commander
                     (version "0.0.1")
@@ -38,21 +27,11 @@
         (action (fn [project-id]
                   (when (.-debug program) (swap! app-state assoc :debug true))
                   (p/let [organization-id (utils/get-env "ORGANIZATION_ID")
-                          result (api/get-projects (keyword (.-provider program)) organization-id)
-                          projects (-> result :body :projects)
-                          project-ids (into #{} (mapv :id projects))
-                          project-selector  (utils/prefix-match project-id project-ids)
-                          project-m (fn [project-id] (filterv #(= (:id %) project-id) projects))]
-                    (if (some? project-selector)
-                      (let [project-name (:name (first (project-m project-selector)))
-                            _ (println "PROJECT_NAME"  project-name project-selector)]
-                        (utils/update-project-id project-selector project-name)
-                        (println "Switching to Project" project-name))
-                      (if (contains? project-ids project-id)
-                        (let [project-name (:name (first (project-m project-id)))]
-                          (utils/update-project-id project-id project-name)
-                          (println "Switching to Project" project-name))
-                          (println "Error: Project " project-id "doesn't exist")))))))
+                          project-id (api/get-projectid-prefix (keyword (.-provider program)) organization-id project-id)]
+                    (when (some? project-id)
+                      (p/let [project-name (api/get-project-name (keyword (.-provider program)) project-id)]
+                        (utils/update-project-id project-id project-name)
+                        (println "Switching to Project:" project-name "ID:" project-id)))))))
 
     (.. program
         (command "list")
@@ -71,21 +50,16 @@
     (.. program
         (command "delete <project-id>")
         (option "-F --force" "Force Delete")
-        (action (fn [project-id force cmd]
-                  (if-not force
-                    (p/let [delete? (prompts-delete-project cmd)]
-                      (when delete?
-                        (when (.-debug program) (utils/set-debug!))
-                        (p/let [organization-id (utils/get-env "ORGANIZATION_ID")
-                                result (api/get-projects (keyword (.-provider program)) organization-id)
-                                projects (-> result :body :projects)
-                                project-ids (into #{} (mapv :id projects))
-                                project-selector  (utils/prefix-match project-id project-ids)]
-                          (if (some? project-selector)
-                            (api/delete-project (keyword (.-provider program)) project-selector)
-                            (if (contains? project-ids project-id)
-                              (api/delete-project (keyword (.-provider program)) project-id)
-                              (println "Error: Project " project-id "doesn't exist"))))))))))
+        (action (fn [project-id cmd]
+                  (when (.-debug program) (utils/set-debug!))
+                  (p/let [organization-id (utils/get-env "ORGANIZATION_ID")
+                          project-id (api/get-projectid-prefix (keyword (.-provider program)) organization-id project-id)]
+                    (when (some? project-id)
+                      (if (.-force cmd)
+                        (api/delete-project (keyword (.-provider program)) project-id)
+                        (p/let [delete? (utils/prompts-delete cmd (str "Delete Project: " project-id))]
+                          (when delete?
+                            (api/delete-project (keyword (.-provider program)) project-id)))))))))
 
     (.. program
         (command "*")
