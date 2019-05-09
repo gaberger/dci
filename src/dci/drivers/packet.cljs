@@ -23,7 +23,6 @@
    :enter (fn [ctx]
             (assoc-in ctx [:request :headers "X-Auth-Token"] (utils/get-env "APIKEY")))})
 
-
 (def add-proxy-header
   {:name  ::add-proxy-header
    :enter (fn [ctx]
@@ -81,8 +80,7 @@
                             :consumes    ["application/json"]
                                         ;:query-params {:exclude ["devices" "members" "memberships"
                                         ;                         "invitations" "max_devices" "ssh_keys"]}
-                            :body-schema {:project {:name s/Str}}
-                            }
+                            :body-schema {:project {:name s/Str}}}
                            {:route-name  :delete-project
                             :path-parts  ["/projects/" :project-id]
                             :path-schema {:project-id s/Str}
@@ -121,6 +119,7 @@
       401 (error-and-exit)
       404 {:status 404 :body body}
       406 {:status 406 :body body}
+      422 {:status 422 :body body}
       200 {:status 200 :body body}
       201 {:status 201 :body body}
       204 {:status 204 :body body}
@@ -178,14 +177,13 @@
         :table (utils/print-table coll)
         (utils/print-table coll)))))
 
-
 (defn project-exist-id? [{:keys [project-id]}]
   (when (:debug @app-state) (println "calling project-exists?" project-id))
   (go
     (let [result    (<! (read-request :get-project {:project-id project-id}))]
       (condp = (:status result)
         200 true
-       false))))
+        false))))
 
 (defn project-exist-name? [{:keys [organization-id name]}]
   (when (:debug @app-state) (println "calling project-exists?" name))
@@ -196,7 +194,6 @@
       (if-not (empty? project-m)
         true
         false))))
-
 
 (defn- get-projects [organization-id & options]
   (when (:debug @app-state) (println "calling get-projects"))
@@ -231,7 +228,6 @@
         :table (utils/print-table coll)
         (utils/print-table coll)))))
 
-
 (defn create-project [organization-id project-name & options]
   (when (:debug @app-state)  (println "calling create-project" organization-id project-name))
   (go
@@ -256,8 +252,8 @@
       (condp = (:status project)
         204 (log-error "Project" project-id "deleted")
         404 (log-error "Project" project-id "doesn't exist")
+        422 (log-error "Project" project-id (first (:errors (:body project))))
         (log-error "js/console.error" "Error deleting project" project-id)))))
-
 
 (defn get-devices-organization [organization-id & options]
   (when (:debug @app-state) (println "calling get-devices-organization" organization-id))
@@ -305,11 +301,11 @@
         (utils/print-table coll)))))
 
 (defn get-devices-project [project-id & options]
-  (when (:debug @app-state) (println "calling list-devices-project" project-id))
+  (when (:debug @app-state) (println "calling get-devices-project" project-id))
   (read-request :get-devices-project {:project-id project-id}))
 
-(defn- print-devices-project  [project-id & options]
-  (when (:debug @app-state) (println "calling list-devices" (first options)))
+(defn- print-devices-project  [project-id options]
+  (when (:debug @app-state) (println "calling print-devices-project"  options))
   (go
     (let [result (<! (get-devices-project project-id (first options)))
           devices (-> result :body :devices)
@@ -337,8 +333,8 @@
                                         :tags             tags})))
                          []
                          devices))
-          coll    (if-not (empty? (:tag options))
-                    (utils/filter-pred coll (:tag options))
+          coll    (if-not (empty? (:filter options))
+                    (utils/filter-pred coll (:filter options))
                     coll)]
       (when (empty? devices)
         (do (println "No Devices found for " project-id)
@@ -348,7 +344,6 @@
         :edn   (utils/print-edn coll)
         :table (utils/print-table coll)
         (utils/print-table coll)))))
-
 
 (defn device-exist-id? [{:keys [device-id]}]
   (when (:debug @app-state) (println "calling device-exists-id?" name))
@@ -360,12 +355,12 @@
 
 (defn device-exist-project? [{:keys [project-id name]}]
   (when (:debug @app-state) (println "calling device-exists?" name))
-    (go
-      (let [result  (<! (get-devices-project project-id))
-            devices (-> result :body :devices)
-            device-m (filterv #(= (:hostname %) name) devices)]
+  (go
+    (let [result  (<! (get-devices-project project-id))
+          devices (-> result :body :devices)
+          device-m (filterv #(= (:hostname %) name) devices)]
             ;names   (into #{} (map :hostname devices))]
-        (when (:debug @app-state) (println "Device-exists project" name project-id))
+      (when (:debug @app-state) (println "Device-exists project" name project-id))
       (if-not (empty? device-m)
         true
         false))))
@@ -379,7 +374,7 @@
           devices (-> result :body :devices)
           device-m (filterv #(= (:name %) name) devices)]
          ; names (into #{} (map :hostname devices))]
-      (when (:debug @app-state) (println "Device-exists organization" name organization-id ))
+      (when (:debug @app-state) (println "Device-exists organization" name organization-id))
       (if-not (empty? device-m)
         (-> device-m first :id)
         nil))))
@@ -405,18 +400,22 @@
   (when (:debug @app-state) (println "calling get-device" device-id))
   (read-request :get-device {:device-id device-id}))
 
+(defn get-device-id [device-id & options]
+  (when (:debug @app-state) (println "calling get-device" device-id))
+  (read-request :get-device {:device-id device-id}))
+
 (defn- delete-device [device-id & options]
   (when (:debug @app-state) (println "calling delete-device"))
   (go
-    (let [result (<! (get-device device-id ))
-        state (-> result :body :state)]
+    (let [result (<! (get-device device-id))
+          state (-> result :body :state)]
       (if (= state "active")
         (let [device (<! (read-request :delete-device {:device-id device-id}))]
           (condp = (:status device)
             204 (log-error "Device" device-id "deleted")
             404 (log-error "Device" device-id "doesn't exist")
             (log-error "js/console.error" "Error deleting device" device-id)))
-      (log-error "Error: Device cannot be deleted while provisioning")))))
+        (log-error "Error: Device cannot be deleted while provisioning")))))
 
 (defn- print-device [device-id & options]
   (when (:debug @app-state) (println "calling get-device"))
@@ -439,13 +438,12 @@
       (when (:debug @app-state) (println "device-selector" device-selector))
       (if (some? device-selector)
         device-selector
-        (<! (get-device prefix))
+        nil
         nil))))
-
 
 (defn- get-project [project-id & options]
   (when (:debug @app-state)  (println "calling get-project" project-id))
-  (go 
+  (go
     (let [project (<! (read-request :get-project {:project-id project-id}))]
       (condp = (:status project)
         200 (:body project)
@@ -456,11 +454,10 @@
   (when (:debug @app-state)  (println "calling get-project-id" project-name))
   (go
     (let [result      (<! (read-request :get-projects {:organization-id organization-id}))
-          projects    (-> result :body :projects )
+          projects    (-> result :body :projects)
           sel-project (filterv #(= (:name %) project-name) projects)
-          project-id (-> sel-project first :id)
-          ]
-      (when (:debug @app-state (println "get-project-id" project-name project-id)))
+          project-id (-> sel-project first :id)]
+      (when (:debug @app-state) (println "get-project-id" project-name project-id))
       project-id)))
 
 (defn- get-project-name [project-id]
@@ -483,9 +480,7 @@
       (if (some? project-selector)
         project-selector
         (<! (get-project prefix))
-         nil))))
-
-
+        nil))))
 
 (defn- print-project [project-id] nil)
 
@@ -511,7 +506,7 @@
 (defmethod api/get-device :packet   [_ device-id & options] (get-device device-id (first options)))
 (defmethod api/print-project :packet [_ & options] (print-project (first options)))
 (defmethod api/get-project :packet  [_  project-id & options] (get-project project-id (first options)))
-(defmethod api/get-project-name :packet  [_ project-id] (get-project-name project-id ))
+(defmethod api/get-project-name :packet  [_ project-id] (get-project-name project-id))
 (defmethod api/get-project-id :packet [_ organization-id project-name] (get-project-id organization-id project-name))
 (def exports #js {})
 

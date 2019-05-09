@@ -15,12 +15,12 @@
 
 (defn command-handler []
   (p/let [program (.. commander
-                    (version "0.0.1")
-                    (description "Server Module")
-                    (option "-D --debug" "Debug")
-                    (option "-J --json" "Output to JSON")
-                    (option "-E --edn" "Output to EDN")
-                    (option "-P --provider <provider>" "Provider"  #"(?i)(packet|vultr)$" "packet"))]
+                      (version "0.0.1")
+                      (description "Server Module")
+                      (option "-D --debug" "Debug")
+                      (option "-J --json" "Output to JSON")
+                      (option "-E --edn" "Output to EDN")
+                      (option "-P --provider <provider>" "Provider"  #"(?i)(packet|vultr)$" "packet"))]
 
     (.. program
         (command "list")
@@ -61,7 +61,7 @@
                                        :facility         facilities'
                                        :tags             tags'
                                        :operating_system os'}]
-                        (api/create-device (keyword (.-provider program)) project-id args))))))
+                      (api/create-device (keyword (.-provider program)) project-id args))))))
 
     (.. program
         (command "delete <device-id>")
@@ -69,13 +69,12 @@
         (action (fn [device-id cmd]
                   (p/let [organization-id (utils/get-env "ORGANIZATION_ID")
                           device-id (api/get-deviceid-prefix (keyword (.-provider program)) organization-id device-id)]
-                     (when (some? device-id)
-                        (if (.-force cmd)
-                          (api/delete-device (keyword (.-provider program)) device-id)
-                          (p/let [delete? (utils/prompts-delete cmd (str "Delete Device: " device-id))]
-                            (when delete?
-                              (api/delete-device (keyword (.-provider program)) device-id)))))))))
-
+                    (when (some? device-id)
+                      (if (.-force cmd)
+                        (api/delete-device (keyword (.-provider program)) device-id)
+                        (p/let [delete? (utils/prompts-delete cmd (str "Delete Device: " device-id))]
+                          (when delete?
+                            (api/delete-device (keyword (.-provider program)) device-id)))))))))
 
     (.. program
         (command "*")
@@ -92,7 +91,6 @@
     (when (.-debug program) (do
                               (swap! app-state assoc :debug true)
                               (pprint/pprint @app-state)))
-
 
     (cond (= (.-args.length program) 0)
           (.. program

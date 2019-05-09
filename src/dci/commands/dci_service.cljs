@@ -50,10 +50,11 @@
                                                                   :tags             (name service)
                                                                   :facility         (mapv name facilities)})))]
                               (go
-                                (if-some [project-id (<! (api/create-project (keyword (.-provider program)) organization-id project-name))]
-                                  
+                                (if-some [project-id
+                                          (<! (api/create-project (keyword (.-provider program)) organization-id project-name))]
                                   (batch-create count project-id program)
-                                  (let [project-id (<! (api/get-project-id (keyword (.-provider program)) organization-id project-name))]
+                                  (let [project-id
+                                        (<! (api/get-project-id (keyword (.-provider program)) organization-id project-name))]
                                     (batch-create count project-id program))))))
                           service-spec))))))
 

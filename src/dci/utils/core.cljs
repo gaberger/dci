@@ -39,6 +39,7 @@
    (catch js/Object e
      [:error (js->clj e)])))
 
+
 (defn log-error [& msg]
   #_(do (binding [*print-fn* *print-err-fn*]))
   (js/console.error (str/join " " msg)))
@@ -75,7 +76,7 @@
 
 (defn read-service-file [file]
   (try
-    (read-string (slurp file))
+    (fnext (read-yaml (slurp file)))
     (catch js/Object e
        (js->clj e))))
 
