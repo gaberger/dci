@@ -53,13 +53,14 @@
         (action (fn [project-id cmd]
                   (when (.-debug program) (utils/set-debug!))
                   (p/let [organization-id (utils/get-env "ORGANIZATION_ID")
-                          project-id (api/get-projectid-prefix (keyword (.-provider program)) organization-id project-id)]
-                    (when (some? project-id)
+                          project-id' (api/get-projectid-prefix (keyword (.-provider program)) organization-id project-id)]
+                    (if (some? project-id')
                       (if (.-force cmd)
-                        (api/delete-project (keyword (.-provider program)) project-id)
-                        (p/let [delete? (utils/prompts-delete cmd (str "Delete Project: " project-id))]
+                        (api/delete-project (keyword (.-provider program)) project-id')
+                        (p/let [delete? (utils/prompts-delete cmd (str "Delete Project: " project-id'))]
                           (when delete?
-                            (api/delete-project (keyword (.-provider program)) project-id)))))))))
+                            (api/delete-project (keyword (.-provider program)) project-id'))))
+                      (println "Project:" project-id "Doesn't exist"))))))
 
     (.. program
         (command "*")

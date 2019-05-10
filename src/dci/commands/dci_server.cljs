@@ -31,12 +31,11 @@
                                      (some? (utils/get-env "PROJECT_ID")) (utils/get-env "PROJECT_ID")
                                      (string? project-id)                 project-id
                                      :else                                (.help cmd (fn [t] t)))
-                        tag        (if (.-tag cmd) {:filter (.-tag cmd)} {:filter []})]
-                    ;TODO Not working..
-                    (when (= (:output @app-state) :table)
-                      (p/let [project-name  (api/get-project-name (keyword (.-provider program)) project-id)]
-                        (println "Using Project:" project-name "\nID:" project-id)))
-                    (api/print-devices-project (keyword (.-provider program))  project-id {:tag tag})))))
+                        tag        (if-some [filter (.-tag cmd)] {:filter filter} nil)]
+                    (api/print-devices-project :packet project-id tag)
+                    #_(p/let [project-name  (api/get-project-name (keyword (.-provider program)) project-id)]
+                        (utils/log-error "Using Project:" project-name "\nID:" project-id)))
+                    #_(api/print2-devices-project (keyword (.-provider program))  project-id filter))))
 
     (.. program
         (command "create <hostname>")
@@ -68,13 +67,14 @@
         (option "-F --force" "Force Delete")
         (action (fn [device-id cmd]
                   (p/let [organization-id (utils/get-env "ORGANIZATION_ID")
-                          device-id (api/get-deviceid-prefix (keyword (.-provider program)) organization-id device-id)]
-                    (when (some? device-id)
+                          device-id' (api/get-deviceid-prefix (keyword (.-provider program)) organization-id device-id)]
+                    (if (some? device-id')
                       (if (.-force cmd)
-                        (api/delete-device (keyword (.-provider program)) device-id)
-                        (p/let [delete? (utils/prompts-delete cmd (str "Delete Device: " device-id))]
+                        (api/delete-device (keyword (.-provider program)) device-id')
+                        (p/let [delete? (utils/prompts-delete cmd (str "Delete Device: " device-id'))]
                           (when delete?
-                            (api/delete-device (keyword (.-provider program)) device-id)))))))))
+                            (api/delete-device (keyword (.-provider program)) device-id'))))
+                      (println "Device" device-id "cannot be found"))))))
 
     (.. program
         (command "*")

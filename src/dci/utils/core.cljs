@@ -152,6 +152,7 @@
     (update-environment)))
 
 (defn filter-pred [data filter]
+  (when (:debug @app-state) (println "Using filter" filter))
   (into []
         (for [m data
               :let  [tags (:tags m)]

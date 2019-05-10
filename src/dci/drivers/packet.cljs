@@ -243,7 +243,7 @@
               project-record (conj [] (select-keys (:body project) [:id :name :created_at]))]
           (do
             (utils/print-table project-record)
-            (project-id)))))))
+            project-id))))))
 
 (defn delete-project [project-id & options]
   (when (:debug @app-state) (println "calling delete-project" project-id))
@@ -300,14 +300,14 @@
         :table (utils/print-table coll)
         (utils/print-table coll)))))
 
-(defn get-devices-project [project-id & options]
+(defn get-devices-project [project-id]
   (when (:debug @app-state) (println "calling get-devices-project" project-id))
   (read-request :get-devices-project {:project-id project-id}))
 
 (defn- print-devices-project  [project-id options]
-  (when (:debug @app-state) (println "calling print-devices-project"  options))
+   (when (:debug @app-state) (println "calling print-devices-project" project-id (first options)))
   (go
-    (let [result (<! (get-devices-project project-id (first options)))
+    (let [result  (<! (get-devices-project project-id))
           devices (-> result :body :devices)
           coll    (into []
                         (reduce
@@ -316,9 +316,8 @@
                                  facility         (-> device :facility :name)
                                  operating-system (-> device :operating_system :name)
                                  hostname         (:hostname device)
-                                 tags             (if-not (str/blank? (first (:tags device)))
-                                                    (into #{} (mapv #(str/trim %) (:tags device)))
-                                                    [])
+                                 tags             (when-not (str/blank? (first (:tags device)))
+                                                    (into #{} (mapv #(str/trim %) (:tags device))))
                                  addresses        (into #{} (mapv #(:address %) (:ip_addresses device)))
                                  network          (:network device)
                                  root-password    (:root_password device)
@@ -333,8 +332,8 @@
                                         :tags             tags})))
                          []
                          devices))
-          coll    (if-not (empty? (:filter options))
-                    (utils/filter-pred coll (:filter options))
+          coll    (if-not (empty? (:filter (first options)))
+                    (utils/filter-pred coll (:filter (first options)))
                     coll)]
       (when (empty? devices)
         (do (println "No Devices found for " project-id)
@@ -438,7 +437,6 @@
       (when (:debug @app-state) (println "device-selector" device-selector))
       (if (some? device-selector)
         device-selector
-        nil
         nil))))
 
 (defn- get-project [project-id & options]
@@ -466,7 +464,6 @@
     (let [project (<! (read-request :get-project {:project-id project-id}))]
       (condp = (:status project)
         200 (-> project :body :name)
-        403 nil
         (log-error "Error retrieving project" project-id)))))
 
 (defn get-projectid-prefix [organization-id prefix]
@@ -479,7 +476,6 @@
       (when (:debug @app-state) (println "project-selector" project-selector))
       (if (some? project-selector)
         project-selector
-        (<! (get-project prefix))
         nil))))
 
 (defn- print-project [project-id] nil)
@@ -495,8 +491,8 @@
 (defmethod api/delete-project :packet [_  project-id & options] (delete-project project-id (first options)))
 (defmethod api/get-devices-organization :packet [_ organization-id & options] (get-devices-organization organization-id (first options)))
 (defmethod api/print-devices-organization :packet [_ organization-id & options] (print-devices-organization organization-id (first options)))
-(defmethod api/print-devices-project :packet [_ project-id & options] (print-devices-project project-id (first options)))
-(defmethod api/get-devices-project :packet [_ project-id & options] (get-devices-project project-id (first options)))
+(defmethod api/print-devices-project :packet [_ project-id & options] (print-devices-project project-id options))
+(defmethod api/get-devices-project :packet [_ project-id] (get-devices-project project-id ))
 (defmethod api/device-exist? [:packet :organization] [_ project-or-organization & options] (device-exist-organization? (first options)))
 (defmethod api/device-exist? [:packet :project] [_ project-or-organization & options] (device-exist-project? (first options)))
 (defmethod api/create-device :packet [_ project-id & options] (create-device project-id (first options)))

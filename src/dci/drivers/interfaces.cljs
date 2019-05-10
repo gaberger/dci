@@ -15,8 +15,8 @@
 (defmulti print-devices-organization "Print Devices by Organization" {:arglists '([driver organization-id options])}
   (fn [driver organization-id & options] driver))
 
-(defmulti get-devices-project "Get Devices by Project" (fn [driver project-id & options] driver))
 (defmulti print-devices-project "Print Devices by Project" (fn [driver project-id & options] driver))
+(defmulti get-devices-project "Get Devices by Project" (fn [driver project-id] driver))
 
 (defmulti get-device "Get Device Resource" {:arglists '([driver device-id])} (fn [driver device-id & options] driver))
 (defmulti print-device "Print Device Rsource" {:arglists '([driver device-id])} (fn [driver device-id & options] driver))
