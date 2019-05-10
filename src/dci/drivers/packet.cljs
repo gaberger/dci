@@ -14,9 +14,8 @@
             [dci.drivers.interfaces :as api]
             [dci.utils.core :refer [log-error] :as utils]))
 
-;(set! js/XMLHttpRequest xhr2)
 (set! js/XMLHttpRequest XMLHttpRequest) ;; weird status response
-
+(def library-version "0.0.4")
 
 (def add-authentication-header
   {:name  ::add-authentication-header
@@ -305,7 +304,7 @@
   (read-request :get-devices-project {:project-id project-id}))
 
 (defn- print-devices-project  [project-id options]
-   (when (:debug @app-state) (println "calling print-devices-project" project-id (first options)))
+  (when (:debug @app-state) (println "calling print-devices-project" project-id (first options)))
   (go
     (let [result  (<! (get-devices-project project-id))
           devices (-> result :body :devices)
@@ -492,7 +491,7 @@
 (defmethod api/get-devices-organization :packet [_ organization-id & options] (get-devices-organization organization-id (first options)))
 (defmethod api/print-devices-organization :packet [_ organization-id & options] (print-devices-organization organization-id (first options)))
 (defmethod api/print-devices-project :packet [_ project-id & options] (print-devices-project project-id options))
-(defmethod api/get-devices-project :packet [_ project-id] (get-devices-project project-id ))
+(defmethod api/get-devices-project :packet [_ project-id] (get-devices-project project-id))
 (defmethod api/device-exist? [:packet :organization] [_ project-or-organization & options] (device-exist-organization? (first options)))
 (defmethod api/device-exist? [:packet :project] [_ project-or-organization & options] (device-exist-project? (first options)))
 (defmethod api/create-device :packet [_ project-id & options] (create-device project-id (first options)))

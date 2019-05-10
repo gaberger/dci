@@ -15,7 +15,7 @@
 
 (defn command-handler []
   (p/let [program (.. commander
-                      (version "0.0.1")
+                      (version "0.0.4")
                       (description "Server Module")
                       (option "-D --debug" "Debug")
                       (option "-J --json" "Output to JSON")
@@ -35,7 +35,7 @@
                     (api/print-devices-project :packet project-id tag)
                     #_(p/let [project-name  (api/get-project-name (keyword (.-provider program)) project-id)]
                         (utils/log-error "Using Project:" project-name "\nID:" project-id)))
-                    #_(api/print2-devices-project (keyword (.-provider program))  project-id filter))))
+                  #_(api/print2-devices-project (keyword (.-provider program))  project-id filter))))
 
     (.. program
         (command "create <hostname>")

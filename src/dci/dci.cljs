@@ -51,7 +51,7 @@
 
 (defn command-handler []
   (.. commander
-      (version "0.0.1")
+      (version "0.0.4")
       (command "organization <command>" "Organization operations")
       (command "project <command>" "Project operations")
       (command "server <command>" "Server operations")

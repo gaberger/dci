@@ -15,7 +15,7 @@
 
 (defn command-handler []
   (let [program (.. commander
-                    (version "0.0.1")
+                    (version "0.0.4")
                     (description "Project Module")
                     (option "-D --debug" "Debug")
                     (option "-J --json" "Output to JSON")

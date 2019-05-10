@@ -1,5 +1,8 @@
 #### Data Center Command Interface
 
+
+[![Alt text](https://img.youtube.com/vi//fw8XVNx_ZAg/0.jpg)](https://www.youtube.com/watch?v=fw8XVNx_ZAg)
+
 ### Introduction
 
 `dci` is a command line interface for exploring and interacting with a Bare Metal Cloud service such as Packet.net. The tool provides both an interactive interface with `prompt` support and a `force` mode for command-line scripting and automation.
