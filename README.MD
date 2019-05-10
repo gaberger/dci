@@ -1,7 +1,9 @@
 #### Data Center Command Interface
 
 
-[![Alt text](https://img.youtube.com/vi//fw8XVNx_ZAg/0.jpg)](https://www.youtube.com/watch?v=fw8XVNx_ZAg)
+[![Demo](https://img.youtube.com/vi/fw8XVNx_ZAg/0.jpg)](https://www.youtube.com/watch?v=fw8XVNx_ZAg)
+
+
 
 ### Introduction
 
