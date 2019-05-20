@@ -20,6 +20,7 @@
 (def config-file (str/join "/" [(.homedir os) "dci-config.edn"]))
 
 
+(defn get-home-dir [] (.homedir os))
 
 (defn print-edn [obj]
   (pprint/pprint  obj))
@@ -38,6 +39,12 @@
    [:ok (js->clj (yaml/load string) :keywordize-keys true)]
    (catch js/Object e
      [:error (js->clj e)])))
+
+(defn write-yaml [js]
+  (try
+    (yaml/safeDump js)
+    (catch js/Object e
+      [:error (js->clj e)])))
 
 
 (defn log-error [& msg]

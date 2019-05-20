@@ -11,7 +11,7 @@
 (assert (not (nil? (utils/get-env "APIKEY"))))
 (assert (not (nil? (utils/get-env "ORGANIZATION_ID"))))
 (assert (not (nil? (utils/get-env "PROJECT_ID"))))
-(swap! app-state assoc :debug true)
+(swap! app-state assoc :debug false)
 
 (def test-state (atom {}))
 
@@ -20,7 +20,7 @@
     (println "Success!")
     (println "FAIL")))
 
-(deftest get-organizations-test
+#_(deftest get-organizations-test
   (async done
          (go
            (let [result (<! (api/get-organizations :packet ))]
@@ -29,7 +29,7 @@
                   (:status result))))
            (done))))
 
-(deftest get-projects-test
+#_(deftest get-projects-test
   (let [organization-id (utils/get-env "ORGANIZATION_ID")]
     (async done
          (go
@@ -38,7 +38,7 @@
                     (:status result))))
            (done)))))
 
-(deftest get-devices-organization-test
+#_(deftest get-devices-organization-test
   (let [organization-id (utils/get-env "ORGANIZATION_ID")]
     (async done
            (go
@@ -47,7 +47,7 @@
                       (:status result))))
              (done)))))
 
-(deftest get-devices-project-test
+#_(deftest get-devices-project-test
   (let [project-id (utils/get-env "PROJECT_ID")]
     (async done
            (go
@@ -57,7 +57,7 @@
              (done)))))
 
 
-(deftest get-create-project-test
+#_(deftest get-create-project-test
   (let [organization-id (utils/get-env "ORGANIZATION_ID")
         project-name    "test"]
     (async done

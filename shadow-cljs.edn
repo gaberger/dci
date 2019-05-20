@@ -1,51 +1,59 @@
 {:source-paths ["src"]
  :nrepl        {:port 8202}
  :dependencies [[martian-cljs-http "0.1.9"]
+                [martian-test "0.1.9"]
                 [me.raynes/fs "1.4.6"]
                 [clj-fuzzy "0.4.1"]
+                [cljs-node-io "1.1.2"]
+                [com.taoensso/timbre "4.10.0"]
                 [prismatic/schema  "1.1.10"]
                                         ; [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
                 [cljs-node-io "1.1.2"]]
- :deps         true
- :builds       {:dci           {:target    :node-script
-                                :output-to "target/dci.js"
-                                :release   {:compiler-options {:optimizations :simple}}
-                                :main      dci.dci/main!}
-                :server        {:target    :node-script
-                                :output-to "target/dci-server.js"
-                                :release   {:compiler-options {:optimizations :simple}}
-                                :main      dci.commands.dci-server/main!}
-                :project       {:target    :node-script
-                                :output-to "target/dci-project.js"
-                                :release   {:compiler-options {:optimizations :simple}}
-                                :main      dci.commands.dci-project/main!}
-                :organization  {:target    :node-script
-                                :output-to "target/dci-organization.js"
-                                :release   {:compiler-options {:optimizations :simple}}
-                                :main      dci.commands.dci-organization/main!}
-                :service       {:target    :node-script
-                                :output-to "target/dci-service.js"
-                                :release   {:compiler-options {:optimizations :simple}}
-                                :main      dci.commands.dci-service/main!}
-                :driver-packet {:target      :node-library
-                                :output-to   "target/packet.js"
-                                :exports-var dci.drivers.packet/exports}
-                :interfaces    {:target      :node-library
-                                :output-to   "target/interfaces.js"
-                                :exports-var dci.drivers.interfaces/exports}
-                :state         {:target    :node-library
-                                :output-to "target/state.js"
-                                :exports   {:app-state dci.state/app-state}}
-                :utils         {:target      :node-library
-                                :output-to   "target/utils.js"
-                                :exports-var dci.utils.core/exports}
-                ;;:driver-test   {:target    :node-test
-                ;;               :output-to "out/driver-test.js"
-                ;;                :ns-regexp "-test$"
-                ;;                :autorun   true}
-                ;; :server-test   {:target    :node-test
-                ;;                 :output-to "out/server-test.js"
-                ;;                 :ns-regexp "-test$"
-                ;;                 :autorun   true}
-                }}
+ :deps   true
+ :builds {:dci           {:target    :node-script
+                          :output-to "target/dci.js"
+                          :release   {:compiler-options {:optimizations :simple}}
+                          :main      dci.dci/main!}
+          :server        {:target    :node-script
+                          :output-to "target/dci-server.js"
+                          :release   {:compiler-options {:optimizations :simple}}
+                          :main      dci.commands.dci-server/main!}
+          :project       {:target    :node-script
+                          :output-to "target/dci-project.js"
+                          :release   {:compiler-options {:optimizations :simple}}
+                          :main      dci.commands.dci-project/main!}
+          :organization  {:target    :node-script
+                          :output-to "target/dci-organization.js"
+                          :release   {:compiler-options {:optimizations :simple}}
+                          :main      dci.commands.dci-organization/main!}
+          :service       {:target    :node-script
+                          :output-to "target/dci-service.js"
+                          :release   {:compiler-options {:optimizations :simple}}
+                          :main      dci.commands.dci-service/main!}
+          :install       {:target    :node-script
+                          :output-to "target/dci-service-install.js"
+                          :release   {:compiler-options {:optimizations :simple}}
+                          :main      dci.commands.dci-service-install/main!}
+          :driver-packet {:target      :node-library
+                          :output-to   "target/packet.js"
+                          :exports-var dci.drivers.packet/exports}
+          :interfaces    {:target      :node-library
+                          :output-to   "target/interfaces.js"
+                          :exports-var dci.drivers.interfaces/exports}
+          :state         {:target    :node-library
+                          :output-to "target/state.js"
+                          :exports   {:app-state dci.state/app-state}}
+          :utils         {:target      :node-library
+                          :output-to   "target/utils.js"
+                          :exports-var dci.utils.core/exports}
+          ;;:driver-test   {:target    :node-test
+          ;;:driver-test   {:target    :node-test
+          ;;               :output-to "out/driver-test.js"
+          ;;                :ns-regexp "-test$"
+          ;;                :autorun   true}
+          ;;:server-test   {:target    :node-test
+          ;;                 :output-to "out/server-test.js"
+           ;;                :ns-regexp "-test$"
+          ;;                 :autorun   true}
+          }}
 

@@ -18,17 +18,21 @@
     "ws": "^6.1.2"
   },
   "dependencies": {
+    "child_process": "^1.0.2",
     "clj-fuzzy": "^0.4.1",
     "commander": "^2.20.0",
     "iconv-lite": "^0.4.19",
+    "ip-utils": "^2.4.0",
     "js-yaml": "^3.13.1",
+    "namespaces": "0.0.6",
+    "pkg": "^4.4.0",
     "prompts": "^2.0.4",
     "ssh2shell": "^1.9.1",
-    "w3c-xmlhttprequest-plus": "^2.2.0",
-    "xhr2": "git+https://git@github.com/gaberger/node-xhr2#gaberger-patch-1"
+    "w3c-xmlhttprequest-plus": "^2.2.0"
   },
   "pkg": {
     "scripts": "target/**/*.js",
+    "assets": "dependencies/**/*",
     "targets": [
       "linux",
       "macos",

@@ -16,9 +16,9 @@
   (fn [driver organization-id & options] driver))
 
 (defmulti print-devices-project "Print Devices by Project" (fn [driver project-id & options] driver))
-(defmulti get-devices-project "Get Devices by Project" (fn [driver project-id] driver))
+(defmulti get-devices-project "Get Devices by Project" (fn [driver project-id & options] driver))
 
-(defmulti get-device "Get Device Resource" {:arglists '([driver device-id])} (fn [driver device-id & options] driver))
+(defmulti get-device "Get Device Resource" {:arglists '([driver organization-id device-id])} (fn [driver organization-id device-id & options] driver))
 (defmulti print-device "Print Device Rsource" {:arglists '([driver device-id])} (fn [driver device-id & options] driver))
 
 (defmulti get-project "Get Project Resource" {:arglists '([driver project-id])} (fn [driver project-id & options] driver))
@@ -33,9 +33,10 @@
   (fn [driver organization-id project-name & options] driver))
 (defmulti delete-project "Delete Project"  {:arglists '([driver project-id options])} (fn [driver project-id & options] driver))
 
-(defmulti device-exist? "Does Device Exist?" (fn [driver project-or-organization & options] [driver project-or-organization]))
+(defmulti device-exist? "Does Device Exist?" (fn [driver project-or-organization project-or-organization name] [driver project-or-organization project-or-organization name]))
 (defmulti create-device "Create Device" (fn [driver project-id & options] driver))
-(defmulti delete-device "Delete Device" (fn [driver device-id & options] driver))
+(defmulti delete-device "Delete Device" (fn [driver project-id device-id & options] driver))
 (defmulti get-deviceid-prefix "Get Device ID From Prefix" {:arglists '([driver organization-id prefix])} (fn [driver organization-id prefix] driver))
+(defmulti gen-inventory "Generate Ansible Inventory " {:arglists `([driver organization-id project-id])} (fn [driver organization-id project-name] driver))
 
 (def exports #js {})

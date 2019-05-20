@@ -45,8 +45,8 @@
         (option "-O --os <os>" "Select Operating System")
         (option "-T --tags <tags>" "Comma seperated list of tags to apply to metadata")
         (action (fn [hostname project-id cmd]
-                  (go
-                    (let [project-id  (cond
+                  (p/try
+                    (p/let [project-id  (cond
                                         (some? (utils/get-env "PROJECT_ID")) (utils/get-env "PROJECT_ID")
                                         (string? project-id)                 project-id
                                         :else                                (.help cmd (fn [t] t)))
@@ -60,21 +60,33 @@
                                        :facility         facilities'
                                        :tags             tags'
                                        :operating_system os'}]
-                      (api/create-device (keyword (.-provider program)) project-id args))))))
+                      (api/create-device (keyword (.-provider program)) project-id args))
+                    (p/catch js/Error e
+                      (println e))))))
+
+      (.. program
+        (command "gen-inventory <service-name>")
+        (action (fn [service-name cmd]
+                  (go
+                    (let [organization-id (utils/get-env "ORGANIZATION_ID")]
+                      (api/gen-inventory (keyword (.-provider program)) organization-id service-name))))))
+
 
     (.. program
         (command "delete <device-id>")
         (option "-F --force" "Force Delete")
         (action (fn [device-id cmd]
-                  (p/let [organization-id (utils/get-env "ORGANIZATION_ID")
+                  (p/try
+                    (p/let [organization-id (utils/get-env "ORGANIZATION_ID")
                           device-id' (api/get-deviceid-prefix (keyword (.-provider program)) organization-id device-id)]
                     (if (some? device-id')
                       (if (.-force cmd)
                         (api/delete-device (keyword (.-provider program)) device-id')
                         (p/let [delete? (utils/prompts-delete cmd (str "Delete Device: " device-id'))]
                           (when delete?
-                            (api/delete-device (keyword (.-provider program)) device-id'))))
-                      (println "Device" device-id "cannot be found"))))))
+                            (api/delete-device (keyword (.-provider program)) device-id'))))))
+                    (p/catch js/Error e
+                      (println e))))))
 
     (.. program
         (command "*")
