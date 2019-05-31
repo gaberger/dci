@@ -1,5 +1,7 @@
 (ns dci.drivers.interfaces)
 
+(defmulti get-facilities "Get Facilties Resource" (fn [driver] driver :default :packet))
+(defmulti print-facilities "Print Facilties Resource" (fn [driver] driver :default :packet))
 (defmulti get-organizations "Get Organizations Resource" {:arglists '([driver])}
   (fn [driver] driver) :default :packet)
 (defmulti print-organizations "Print Organizations Resource" {:arglists '([driver])}
@@ -36,6 +38,8 @@
 (defmulti device-exist? "Does Device Exist?" (fn [driver project-or-organization project-or-organization name] [driver project-or-organization project-or-organization name]))
 (defmulti create-device "Create Device" (fn [driver project-id & options] driver))
 (defmulti delete-device "Delete Device" (fn [driver project-id device-id & options] driver))
+(defmulti get-device-events "Get Device Event Log" (fn [driver device-id & options] driver))
+(defmulti print-device-events "Print Device Event Log" (fn [driver device-id & options] driver))
 (defmulti get-deviceid-prefix "Get Device ID From Prefix" {:arglists '([driver organization-id prefix])} (fn [driver organization-id prefix] driver))
 (defmulti gen-inventory "Generate Ansible Inventory " {:arglists `([driver organization-id project-id])} (fn [driver organization-id project-name] driver))
 

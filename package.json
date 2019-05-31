@@ -28,6 +28,7 @@
     "pkg": "^4.4.0",
     "prompts": "^2.0.4",
     "ssh2shell": "^1.9.1",
+    "super-progress": "^2.0.2",
     "w3c-xmlhttprequest-plus": "^2.2.0"
   },
   "pkg": {

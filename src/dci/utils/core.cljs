@@ -81,7 +81,7 @@
     (catch js/Object e
       (js->clj e))))
 
-(defn read-service-file [file]
+(defn read-cluster-file [file]
   (try
     (fnext (read-yaml (slurp file)))
     (catch js/Object e
@@ -206,6 +206,17 @@
                  true
                  false)))))
 
+(defn handle-command-default [cmd]
+  (.on cmd "command:*" (fn [e]
+                         (when-not
+                             (contains?
+                              (into #{}
+                                    (keys (js->clj (.-_execs cmd))))
+                              (first e))
+                           (.help cmd)))))
+
+(defn rotate-left [xs]
+  (when (seq xs) (concat (rest xs) [(first xs)])))
 
 
 (def exports #js {})

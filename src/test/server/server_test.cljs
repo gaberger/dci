@@ -29,7 +29,7 @@
            #_(is (= 200 (:status (<! (martian/response-for m :get-organizations)))))
            (done)))))
 
-
+ 
    ;; => ExceptionInfo Value cannot be coerced to match schema: {:id missing-required-key}
 
    #_(martian/response-for m :get-organization {:id "bad-id"})

@@ -31,12 +31,19 @@
    :enter (fn [ctx]
             (assoc-in ctx [:request :headers] {"Access-Control-Request-Headers" "Host"
                                                "Host"                         "api.packet.net"}))})
-
 (defn bootstrap-packet-cljs []
   (martian-http/bootstrap "https://api.packet.net"
                           [{:route-name :get-plans
                             :path-parts ["/plans"]
                             :summary    "Get plans listing"
+                            :method     :get}
+                           {:route-name :get-facilities
+                            :path-parts ["/facilities"]
+                            :summary    "Get facilities listing"
+                            :method     :get}
+                           {:route-name  :get-operating-systems
+                            :path-parts ["/operating-systems"]
+                            :summary    "Get operating-system listing"
                             :method     :get}
                            {:route-name :get-organizations
                             :path-parts ["/organizations"]
@@ -72,6 +79,7 @@
                             :body-schema {:device {:hostname         (s/maybe s/Str)
                                                    :facility         [s/Str]
                                                    :tags             [(s/maybe s/Str)]
+                                                   :userdata         (s/maybe s/Str)
                                                    :plan             s/Str
                                                    :operating_system s/Str}}}
                            {:route-name  :create-project
@@ -81,9 +89,8 @@
                             :method      :post
                             :produces    ["application/json"]
                             :consumes    ["application/json"]
-                                        ;:query-params {:exclude ["devices" "members" "memberships"
-                                        ;                         "invitations" "max_devices" "ssh_keys"]}
-                            :body-schema {:project {:name s/Str}}}
+                            :body-schema {:project {:name s/Str
+                                                    :backend_transfer_enabled s/Bool}}}
                            {:route-name  :delete-project
                             :path-parts  ["/projects/" :project-id]
                             :path-schema {:project-id s/Str}
@@ -94,6 +101,16 @@
                             :summary     "Get device listing"
                             :method      :get
                             :path-schema {:device-id s/Str}}
+                           {:route-name  :get-device-events
+                            :path-parts  ["/devices/" :device-id "/events"]
+                            :summary     "Get device event listing"
+                            :method      :get
+                            :path-schema {:device-id s/Str}}
+                           {:route-name  :validate-userdata
+                            :path-parts  ["/userdata/validate"]
+                            :summary     "Validate userdata"
+                            :method      :post
+                            :body-schema {:userdata {:userdata s/Any}}}
                            {:route-name  :delete-device
                             :path-parts  ["/devices/" :device-id]
                             :summary     "Delete device"
@@ -105,64 +122,48 @@
                                           martian-http/default-interceptors)}))
 
 (defn response-handler [response]
-  (let [status           (:status response)
-        body             (:body response)
-        error            (if (string? (:error body)) (:error body) "")
-        error-and-exit   (fn []
-                           (do (js/console.log "Error: Request Failed" status error))
-                           (.exit js/process))
-        success-and-exit (fn []
-                           (do (println "Success" status)))]
     (when (:debug @app-state)
-      (do
-        (println "Response" response)
-        (pprint/pprint (js->clj body true))))
+      (pprint/pprint (js->clj (:body response) true)))
+  response)
 
-    (condp = status
-      401 (error-and-exit)
-      404 {:status 404 :body body}
-      406 {:status 406 :body body}
-      422 {:status 422 :body body}
-      200 {:status 200 :body body}
-      201 {:status 201 :body body}
-      204 {:status 204 :body body}
-      (error-and-exit))))
-
-(defn write-request [k body]
-  (when (:debug @app-state) (debug "write-request" k body))
-  (go  (let [m    (bootstrap-packet-cljs)
-             _    (when (:debug @app-state)
-                    (do
-                      (debug "DryRun" (martian/request-for m k body))))
-             response (<! (martian/response-for m k body))]
-         (response-handler response))))
-
-(defn read-request
+(defn request-handler
   ([k path-m body]
    (when (:debug @app-state) (debug "read-request" k path-m body))
    (go
      (try
-       (let [m        (bootstrap-packet-cljs)
-           _        (when (:debug @app-state)
-                      (debug (martian/request-for m k (merge path-m
-                                                               {::martian/body body}))))
-           response (<! (martian/response-for m k (merge path-m
-                                                         {::martian/body body})))]
+       (let [m      (bootstrap-packet-cljs)
+             _      (when (:debug @app-state)
+                      (debug (martian/request-for m (merge path-m {::martian/body body}))))
+             response (<! (martian/response-for m k (merge path-m {::martian/body body})))]
          (response-handler response))
      (catch js/Error e
-       (error "Request Error" path-m body)))))
+       (error "Request Error" path-m body e)))))
   ([k path-m]
-   (read-request k path-m nil))
+   (request-handler k path-m nil))
   ([k]
-   (read-request k nil nil)))
+   (request-handler k nil nil)))
 
+(defn request-handler-2
+  ([k body]
+   (when (:debug @app-state) (debug "read-request" k  body))
+   (go
+     (try
+       (let [m        (<! (martian-http/bootstrap-swagger "https://api.packet.net/api-docs/"))  #_(bootstrap-packet-cljs)
+             _        (when (:debug @app-state)
+                        (debug (martian/request-for m k body)))
+             response (<! (martian/response-for m k body))]
+         (response-handler response))
+       (catch js/Error e
+         (error "Request Error" k body e)))))
+  ([k]
+   (request-handler k nil)))
 
 ;; Implementations
 
 
 (defn- get-organizations []
   (when (:debug @app-state) (debug "calling get-organizations"))
-  (read-request :get-organizations))
+  (request-handler :get-organizations))
 
 (defn- print-organizations []
   (go
@@ -183,10 +184,34 @@
         :table (utils/print-table coll)
         (utils/print-table coll)))))
 
+(defn- get-facilities []
+  (when (:debug @app-state) (debug "calling get-facilities"))
+  (request-handler :get-facilities))
+
+(defn- print-facilities []
+  (go
+    (let [result        (<! (get-facilities))
+          organizations (-> result :body :facilities)
+          coll          (into []
+                              (reduce
+                               (fn [acc m]
+                                 (conj acc (select-keys m [:code :name :features])))
+                               []
+                               organizations))]
+      (when (empty? organizations)
+        (error "No Facilities found"))
+      (condp = (:output @app-state)
+        :json  (utils/print-json coll)
+        :edn   (utils/print-edn coll)
+        :table (utils/print-table coll)
+        (utils/print-table coll)))))
+
+
+
 (defn project-exist-id? [{:keys [project-id]}]
   (when (:debug @app-state) (debug "calling project-exists?" project-id))
   (go
-    (let [result    (<! (read-request :get-project {:project-id project-id}))]
+    (let [result    (<! (request-handler :get-project {:project-id project-id}))]
       (condp = (:status result)
         200 true
         false))))
@@ -194,7 +219,7 @@
 (defn project-exist-name? [{:keys [organization-id name]}]
   (when (:debug @app-state) (debug "calling project-exists?" name))
   (go
-    (let [result    (<! (read-request :get-projects {:organization-id organization-id}))
+    (let [result    (<! (request-handler :get-projects {:organization-id organization-id}))
           projects  (-> result :body :projects)
           project-m (filterv #(= (:name %) name) projects)]
       (if-not (empty? project-m)
@@ -203,7 +228,7 @@
 
 (defn- get-projects [organization-id & options]
   (when (:debug @app-state) (debug "calling get-projects"))
-  (read-request :get-projects {:organization-id organization-id}))
+  (request-handler :get-projects {:organization-id organization-id}))
 
 (defn- print-projects [organization-id & options]
   #_{:pre [(assert (and (not (nil? (utils/get-env "ORGANIZATION_ID")))
@@ -234,8 +259,15 @@
         :table (utils/print-table coll)
         (utils/print-table coll)))))
 
+(defn validate-userdata [userdata]
+  (debug userdata)
+  (swap! app-state assoc :debug true)
+  (go
+    (let [userdata (<! (request-handler :validate-userdata nil {:userdata userdata}))]
+      (debug userdata))))
+
 (defn create-project [organization-id project-name & options]
-  (when (:debug @app-state)  (debug "calling create-project" organization-id project-name))
+  (when (:debug @app-state)  (debug "calling create-project" organization-id project-name options))
   (go
     (let [project? (<! (project-exist-name? {:organization-id organization-id :name project-name}))]
       (when (:debug @app-state)  (debug "calling create-project" project?))
@@ -243,8 +275,13 @@
         (do
           (error "Project: Name:" project-name  "exists")
           nil)
-        (let [project        (<! (write-request :create-project {:organization-id organization-id
-                                                                 :name            project-name}))
+        (let [project-payload {:organization-id organization-id
+                               :project {:name project-name}}
+              project-payload-merge (if-some [options (first options)]
+                                      (spy (update-in project-payload [:project] conj options))
+                                      project-payload
+                                      )
+              project        (<! (request-handler :create-project project-payload-merge))
               project-id     (-> project :body :id)
               project-record (conj [] (select-keys (:body project) [:id :name :created_at]))]
           (do
@@ -254,7 +291,7 @@
 (defn delete-project [project-id & options]
   (when (:debug @app-state) (debug "calling delete-project" project-id))
   (go
-    (let [project (<! (read-request :delete-project {:project-id project-id}))]
+    (let [project (<! (request-handler :delete-project {:project-id project-id}))]
       (condp = (:status project)
         204 (error "Project" project-id "deleted")
         404 (error "Project" project-id "doesn't exist")
@@ -264,7 +301,7 @@
 (defn get-devices-organization [organization-id & options]
   (when (:debug @app-state) (debug "calling get-devices-organization" organization-id))
   (go
-    (let [result (<! (read-request :get-devices-organization {:organization-id organization-id}))]
+    (let [result (<! (request-handler :get-devices-organization {:organization-id organization-id}))]
       (when (:debug @app-state) (debug "get-devices-organization result" result))
       (if (= (:status result) 200)
         (-> result :body :devices)
@@ -315,7 +352,7 @@
   (when (:debug @app-state) (debug "calling get-devices-project" project-id))
   (go
     (try
-      (let [result (<! (read-request :get-devices-project {:project-id project-id}))]
+      (let [result (<! (request-handler :get-devices-project {:project-id project-id}))]
         (if (= (:status result) 200)
           (let [devices (-> result :body :devices)]
                 (if-not (empty? (:filter (first options)))
@@ -367,7 +404,7 @@
 (defn device-exist-id? [{:keys [device-id]}]
   (when (:debug @app-state) (debug "calling device-exists-id?" name))
   (go
-    (let [result  (<! (read-request :get-device {:device-id device-id}))]
+    (let [result  (<! (request-handler :get-device {:device-id device-id}))]
       (condp = (:status result)
         200 true
         false))))
@@ -395,18 +432,20 @@
         nil))))
       ;(contains? names name))))
 
-(defn create-device [project-id {:keys [hostname facility tags plan operating_system] :as args}]
+(defn create-device [project-id {:keys [hostname facility tags plan operating_system distribute userdata] :as args}]
   (when (:debug @app-state)  (debug "calling create-device" project-id args))
   (go
     (let [device-id? (<! (device-exist-project? project-id hostname))]
       (if device-id?
         (error "Device: Name:" hostname "exists")
-        (let [device (<! (write-request :create-device {:project-id project-id
-                                                        :device     {:hostname         hostname
-                                                                     :facility         facility
-                                                                     :tags             tags
-                                                                     :plan             plan
-                                                                     :operating_system operating_system}}))
+        (let [device        (<! (request-handler
+                                 :create-device {:project-id project-id
+                                                 :device     {:hostname         hostname
+                                                              :facility         facility
+                                                              :tags             tags
+                                                              :plan             plan
+                                                              :userdata         (or userdata "")
+                                                              :operating_system operating_system}}))
               device-record (conj [] (select-keys (:body device) [:id :hostname :created_at]))]
           (when (:debug @app-state)  (debug "result create device" device))
           (info device-record))))))
@@ -416,7 +455,7 @@
 (defn get-device-id [device-id & options]
   (when (:debug @app-state) (debug "calling get-device" device-id))
   (go
-    (let [result (<! (read-request :get-device {:device-id device-id}))]
+    (let [result (<! (request-handler :get-device {:device-id device-id}))]
     (if (= (:status result) 200)
       (-> result :body)
       nil))))
@@ -440,7 +479,7 @@
   (go
     (if-some [device (<! (get-device-id device-id))]
       (if (= (:state device) "active")
-        (let [device (<! (read-request :delete-device {:device-id device-id}))]
+        (let [device (<! (request-handler :delete-device {:device-id device-id}))]
           (condp = (:status device)
             204 (info "Device" device-id "deleted")
             404 (error "Device" device-id "doesn't exist")
@@ -467,13 +506,21 @@
       (when (:debug @app-state) (debug "device-selector" device-selector))
       (if (some? device-selector)
         device-selector
-       (js/Error. "Device" prefix "not found" )))))
+        (js/Error. "Device" prefix "not found" )))))
 
+(defn- get-device-events [device-id & options]
+  (when (:debug @app-state)  (debug "calling get-device-events " device-id))
+  (go
+    (let [device (<! (request-handler :get-device-events {:device-id device-id}))]
+      (condp = (:status device)
+        200 (-> device :body :events)
+        404 (error "Device" device-id "doesnt exist")
+        (error "Error retrieving device" device-id)))))
 
 (defn- get-project [project-id & options]
   (when (:debug @app-state)  (debug "calling get-project" project-id))
   (go
-    (let [project (<! (read-request :get-project {:project-id project-id}))]
+    (let [project (<! (request-handler :get-project {:project-id project-id}))]
       (condp = (:status project)
         200 (:body project)
         404 (error "Project" project-id "doesnt exist")
@@ -484,7 +531,7 @@
   [organization-id project-name]
   (when (:debug @app-state)  (debug "calling get-project-id" project-name))
   (go
-    (let [result      (<! (read-request :get-projects {:organization-id organization-id}))
+    (let [result      (<! (request-handler :get-projects {:organization-id organization-id}))
           projects    (-> result :body :projects)
           sel-project (filterv #(= (:name %) project-name) projects)
           project-id  (-> sel-project first :id)]
@@ -497,7 +544,7 @@
 (defn- get-project-name [project-id]
   (when (:debug @app-state)  (debug "calling get-project-name" project-id))
   (go
-    (let [project (<! (read-request :get-project {:project-id project-id}))]
+    (let [project (<! (request-handler :get-project {:project-id project-id}))]
       (condp = (:status project)
         200 (-> project :body :name)
         (error "Error retrieving project" project-id)))))
@@ -548,6 +595,8 @@
 
 (defn- print-project [project-id] nil)
 
+(defmethod api/print-facilities :packet [_] (print-facilities))
+(defmethod api/get-facilities :packet [_] (get-facilities))
 (defmethod api/print-organizations :packet [_] (print-organizations))
 (defmethod api/get-organizations   :packet [_] (get-organizations))
 (defmethod api/project-exist? [:packet :id] [_ id-or-name & options] (project-exist-id? (first options)))
@@ -568,6 +617,8 @@
 (defmethod api/print-device :packet [_ device-id & options] (print-device device-id (first options)))
 (defmethod api/get-deviceid-prefix :packet [_ organization-id prefix] (get-deviceid-prefix organization-id prefix))
 (defmethod api/get-device :packet   [_ organization-id device-id & options] (get-device organization-id device-id first options))
+(defmethod api/get-device-events :packet   [_ device-id & options] (get-device-events device-id first options))
+(defmethod api/print-device-events :packet   [_ device-id & options] (get-device-events device-id first options))
 (defmethod api/print-project :packet [_ & options] (print-project (first options)))
 (defmethod api/get-project :packet  [_  project-id & options] (get-project project-id (first options)))
 (defmethod api/get-project-name :packet  [_ project-id] (get-project-name project-id))

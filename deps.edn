@@ -1,13 +1,15 @@
 {:deps
  {cljs.nodejs.shell/cljs.nodejs.shell {:git/url "https://github.com/bolasblack/cljs.nodejs.shell",
                                        :tag     "0.2.1",
-                                       :sha     "db800eaf90969871359270024b2b3e95e29c7ef6"}
+                                       :sha     "c2d63c8cbb90cf4f52c294209b873dd0262b01e6"}
+  ;; deps.edn
   cljs-http                           {:mvn/version "0.1.46"}
   martian-cljs-http                   {:mvn/version "0.1.9"}
   martian-test                        {:mvn/version "0.1.9"}
   prismatic/schema                    {:mvn/version "1.1.10"}
   me.raynes/fs                        {:mvn/version "1.4.6"}
   com.taoensso/timbre                 {:mvn/version "4.10.0"}
+  binaryage/oops                      {:mvn/version "0.7.0"}
   cljs-node-io                        {:mvn/version "1.1.2"}
   clj-fuzzy {:mvn/version "0.4.1"}
   com.lucasbradstreet/cljs-uuid-utils {:mvn/version "1.0.2"}
