@@ -13,9 +13,11 @@
 
 (enable-console-print!)
 
+(def module-version "0.0.4")
+
 (defn command-handler []
   (p/let [program (.. commander
-                      (version "0.0.4")
+                      (version module-version)
                       (description "Server Module")
                       (option "-D --debug" "Debug")
                       (option "-J --json" "Output to JSON")
@@ -64,12 +66,12 @@
                     (p/catch js/Error e
                       (println e))))))
 
-      (.. program
-        (command "gen-inventory <service-name>")
-        (action (fn [service-name cmd]
-                  (go
-                    (let [organization-id (utils/get-env "ORGANIZATION_ID")]
-                      (api/gen-inventory (keyword (.-provider program)) organization-id service-name))))))
+      ;(.. program
+      ;  (command "gen-inventory <service-name>")
+      ;  (action (fn [service-name cmd]
+      ;            (go
+      ;              (let [organization-id (utils/get-env "ORGANIZATION_ID")]
+      ;                (api/gen-inventory (keyword (.-provider program)) organization-id service-name))))))
 
 
     (.. program
@@ -89,9 +91,19 @@
                       (println e))))))
 
     (.. program
-        (command "*")
-        (action (fn []
-                  (.help program #(clojure.string/replace % #"dci-server" "server")))))
+        (command "events <device-id>")
+        (action (fn [device-id cmd]
+                  (p/try
+                    (p/let [organization-id (utils/get-env "ORGANIZATION_ID")
+                            device-id' (api/get-deviceid-prefix (keyword (.-provider program)) organization-id device-id)]
+                      (when (some? device-id')
+                        (p/let [events (api/print-device-events (keyword (.-provider program)) device-id')]
+                          (utils/print-json events))))
+                    (p/catch js/Error e
+                      (println e))))))
+
+
+    (utils/handle-command-default program)
 
     (.parse program (.-argv js/process))
 

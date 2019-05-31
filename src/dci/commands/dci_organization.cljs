@@ -12,9 +12,11 @@
 
 (enable-console-print!)
 
+(def module-version "0.0.4")
+
 (defn command-handler []
   (let [program (.. commander
-                    (version "0.0.4")
+                    (version module-version)
                     (description "Organization Module")
                     (option "-D --debug" "Debug")
                     (option "-J --json" "Output to JSON")
@@ -26,10 +28,8 @@
         (action (fn []
                   (when (.-debug program) (utils/set-debug!))
                   (api/print-organizations (keyword (.-provider program))))))
-    (.. program
-        (command "*")
-        (action (fn []
-                  (.help program #(clojure.string/replace % #"dci-organization" "organization")))))
+
+    (utils/handle-command-default program)
 
     (.parse program (.-argv js/process))
 

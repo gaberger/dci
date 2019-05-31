@@ -46,7 +46,28 @@ Commands:
   help [cmd]                display help for [cmd]
   ```
 
+Service Manifest
+```
+---
 
+organization_id: 60bdbe9f-10c2-4ac9-bc75-6fd635f52daa
+project_name: cluster-test-1
+node_spec:
+  - replicas: 0
+    plan: baremetal_0
+    facilities:
+      - ewr1
+    tags:
+      - control-plane
+    operating_system: ubuntu_16_04
+  - replicas: 0
+    plan: baremetal_0
+    facilities:
+      - ewr1
+    tags:
+      - workers
+    operating_system: ubuntu_16_04
+ ```   
 
 ### Features
 

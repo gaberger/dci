@@ -1,0 +1,22 @@
+---
+
+organization_id: 60bdbe9f-10c2-4ac9-bc75-6fd635f52daa
+project_name: bootstrap-service
+node_spec:
+  - replicas: 1
+    plan: baremetal_0
+    facilities:
+      - ewr1
+    userdata: |
+      #!/bin/bash 
+      export DEBIAN_FRONTEND=noninteractive 
+      add-apt-repository ppa:wireguard/wireguard
+      apt-get -y update
+      apt-get install -y wireguard
+      apt-get install -y linux-headers-$(uname -r)
+
+      ip link add dev wg0 type wireguard
+      ip link set up dev wg0
+    tags:
+      - control-plane
+    operating_system: ubuntu_16_04

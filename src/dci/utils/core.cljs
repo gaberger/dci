@@ -3,13 +3,17 @@
             [cljs-node-io.fs :refer [fexists?]]
             [cljs.reader :refer [read-string]]
             [util]
+            [which]
             [prompts]
             [kitchen-async.promise :as p]
             [kitchen-async.promise.from-channel]
             [os]
             [js-yaml :as yaml]
             [path]
-            [clj-fuzzy :as fuz]
+            [taoensso.timbre :as timbre
+             :refer-macros [log  trace  debug  info  warn  error  fatal  report
+                            logf tracef debugf infof warnf errorf fatalf reportf
+                            spy]]
             [goog.object :as obj]
             [clojure.pprint :as pprint]
             [clojure.walk :refer [postwalk]]
@@ -81,7 +85,7 @@
     (catch js/Object e
       (js->clj e))))
 
-(defn read-service-file [file]
+(defn read-cluster-file [file]
   (try
     (fnext (read-yaml (slurp file)))
     (catch js/Object e
@@ -205,6 +209,26 @@
                (if (.-delete x)
                  true
                  false)))))
+
+(defn handle-command-default [cmd]
+  (.on cmd "command:*" (fn [e]
+                         (when-not
+                             (contains?
+                              (into #{}
+                                    (keys (js->clj (.-_execs cmd))))
+                              (first e))
+                           (.help cmd)))))
+
+(defn kubeone-exists? []
+  (try
+    (.sync which "kubeone")
+    (catch js/Error e
+      (do
+        (error "Please install kubeone dependency in path")
+        (.exit js/process 1)))))
+
+(defn rotate-left [xs]
+  (when (seq xs) (concat (rest xs) [(first xs)])))
 
 
 

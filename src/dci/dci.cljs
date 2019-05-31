@@ -49,13 +49,17 @@
                  (utils/save-config)
                  #_(js/console.log (.-env js/process))))))))
 
+(def module-version "0.0.4")
+
 (defn command-handler []
   (.. commander
-      (version "0.0.4")
+      (version module-version)
       (command "organization <command>" "Organization operations")
+      (command "facility <command>" "Facility operations")
       (command "project <command>" "Project operations")
       (command "server <command>" "Server operations")
-      (command "service <command>" "Service operations")
+      (command "cluster <command>" "Cluster operations")
+      (command "platform <command>" "Platform operations")
       (command "install <command>" "Install operations")
       (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet")
       (description "DataCenter \"Bare Metal Cloud\" Command Interface")))

@@ -2,6 +2,10 @@
   (:require [commander]
             [util]
             [prompts]
+            [taoensso.timbre :as timbre
+             :refer-macros [log  trace  debug  info  warn  error  fatal  report
+                            logf tracef debugf infof warnf errorf fatalf reportf
+                            spy get-env]]
             [dci.drivers.interfaces :as api]
             [dci.drivers.packet]
             [cljs.pprint :as pprint]
@@ -13,9 +17,11 @@
 
 (enable-console-print!)
 
+(def module-version "0.0.4")
+
 (defn command-handler []
   (let [program (.. commander
-                    (version "0.0.4")
+                    (version module-version)
                     (description "Project Module")
                     (option "-D --debug" "Debug")
                     (option "-J --json" "Output to JSON")
@@ -42,10 +48,14 @@
 
     (.. program
         (command "create <project-name>")
-        (action (fn [project-name]
+        (option "-B --backend-transfer" "Enable Backend Transfer")
+        (action (fn [project-name cmd]
                   (when (.-debug program) (utils/set-debug!))
-                  (let [organization-id (utils/get-env "ORGANIZATION_ID")]
-                    (api/create-project (keyword (.-provider program)) organization-id project-name)))))
+                  (let [organization-id (utils/get-env "ORGANIZATION_ID")
+                        options (if (.-backendTransfer cmd)
+                                  {:backend_transfer_enabled true}
+                                  {:backend_transfer_enabled false})]
+                    (api/create-project (keyword (.-provider program)) organization-id project-name options)))))
 
     (.. program
         (command "delete <project-id>")
@@ -62,10 +72,7 @@
                             (api/delete-project (keyword (.-provider program)) project-id'))))
                       (println "Project:" project-id "Doesn't exist"))))))
 
-    (.. program
-        (command "*")
-        (action (fn []
-                  (.help program #(clojure.string/replace % #"dci-organization" "organization")))))
+    (utils/handle-command-default program)
 
     (.parse program (.-argv js/process))
     (cond
