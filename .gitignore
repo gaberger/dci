@@ -9,3 +9,5 @@ cljs-test-runner-out
 dci-config.edn
 @eaDir
 package-lock.json
+cloud-init
+templates
