@@ -230,6 +230,4 @@
 (defn rotate-left [xs]
   (when (seq xs) (concat (rest xs) [(first xs)])))
 
-
-
 (def exports #js {})

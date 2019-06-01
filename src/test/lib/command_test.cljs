@@ -18,14 +18,6 @@
 
 
 
-;TODO need to execute kube-one based off platform win/linux/darwin
-#_(deftest spawn-test
-  (async done
-         (p/let [result (command/run-command "ls" ["-l"])]
-               (is (= ""
-                      result))
-               (done))))
-
 (deftest exec-predicate
   (async done
          (is (thrown? js/Error (.sync which "kubeone1")))
