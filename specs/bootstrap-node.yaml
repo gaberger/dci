@@ -8,15 +8,9 @@ node_spec:
     facilities:
       - ewr1
     userdata: |
-      #!/bin/bash 
-      export DEBIAN_FRONTEND=noninteractive 
-      add-apt-repository ppa:wireguard/wireguard
-      apt-get -y update
-      apt-get install -y wireguard
-      apt-get install -y linux-headers-$(uname -r)
-
-      ip link add dev wg0 type wireguard
-      ip link set up dev wg0
+      #!/bin/bash
+      export DEBIAN_FRONTEND=noninteractive
+      snap install gobetween --edge
     tags:
-      - control-plane
+      - load-balancer
     operating_system: ubuntu_16_04

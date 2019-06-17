@@ -18,6 +18,7 @@
           project-id (api/get-project-id (keyword provider) organization-id cluster-name)]
     (if (some? project-id)
       (p/let [devices  (api/get-devices-project (keyword provider) project-id)
+              ssh-keys (api/get-ssh-keys (keyword provider))
               cp-devices (filterv (fn [m] (let [tag-set (into #{} (:tags m))]
                                             (contains? tag-set "control-plane"))) devices)
               create-hostdata (fn [devices] (into []
@@ -57,7 +58,8 @@
                                                              :facilities ["ewr1"] }
                                       ; :sshPublicKeys       ssh-pub-keys
                                        :operatingSystem     "ubuntu"
-                                       :operatingSystemSpec {:distUpgradeOnboot false}}
+                                       :operatingSystemSpec {:distUpgradeOnboot false}
+                                       :SSHPublicKeys (if (some? ssh-keys) ssh-keys []) }
 
 
                         }]

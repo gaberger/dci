@@ -1,7 +1,6 @@
 (ns dci.drivers.packet
   (:require [martian.core :as martian]
             [martian.cljs-http :as martian-http]
-            [util]
             [w3c-xmlhttprequest-plus :refer [XMLHttpRequest]]
             [schema.core :as s :include-macros true]
             [cljs.core.async :refer [<! >! timeout take! chan] :refer-macros [go go-loop]]
@@ -12,7 +11,6 @@
             [kitchen-async.promise :as p]
             [kitchen-async.promise.from-channel]
             [clojure.string :as str]
-            [clojure.walk :refer [postwalk]]
             [clojure.pprint :as pprint]
             [dci.state :refer [app-state]]
             [dci.drivers.interfaces :as api]
@@ -69,6 +67,10 @@
                             :summary     "Get all devices of organization"
                             :method      :get
                             :path-schema {:organization-id s/Str}}
+                           {:route-name  :get-ssh-keys
+                            :path-parts  ["/ssh-keys"]
+                            :summary     "Get ssh-keys"
+                            :method      :get}
                            {:route-name  :create-device
                             :path-parts  ["/projects/" :project-id "/devices"]
                             :path-schema {:project-id s/Any}
@@ -76,12 +78,28 @@
                             :method      :post
                             :produces    ["application/json"]
                             :consumes    ["application/json"]
-                            :body-schema {:device {:hostname         (s/maybe s/Str)
+                            :body-schema {:device {(s/optional-key :hostname)     (s/maybe s/Str)
                                                    :facility         [s/Str]
                                                    :tags             [(s/maybe s/Str)]
                                                    :userdata         (s/maybe s/Str)
                                                    :plan             s/Str
                                                    :operating_system s/Str}}}
+                          {:route-name  :create-devices-batch
+                           :path-parts  ["/projects/" :project-id "/devices/batch"]
+                           :path-schema {:project-id s/Str}
+                           :summary     "Create device"
+                           :method      :post
+                           :produces    ["application/json"]
+                           :consumes    ["application/json"]
+                           :body-schema {:batch {:batches [ {(s/optional-key :hostname)     (s/maybe s/Str) 
+                                                             :facility         [s/Str]
+                                                             :tags             [(s/maybe s/Str)]
+                                                             :userdata         (s/maybe s/Str)
+                                                             :plan             s/Str
+                                                             :facility_diversity_level  (s/maybe s/Int)
+                                                             :quantity (s/maybe s/Int)
+                                                             :operating_system s/Str}]}}} 
+                           
                            {:route-name  :create-project
                             :path-parts  ["/organizations/" :organization-id "/projects"]
                             :path-schema {:organization-id s/Str}
@@ -226,6 +244,21 @@
         true
         false))))
 
+;;TODO Fix this
+(defn- get-ssh-keys []
+  (when (:debug @app-state) (debug "calling get-ssh-keys"))
+  (go
+    (let [m      (bootstrap-packet-cljs)
+                  _      (when (:debug @app-state)
+                           (debug (martian/request-for m :gen-ssh-keys)))
+          response (<! (martian/response-for m :get-ssh-keys))]
+      (if (= (:status response) 200)
+        (let [sshvec (-> response :body :ssh_keys )
+              keys (mapv :key sshvec)]
+          keys)
+        nil)
+      )))
+
 (defn- get-projects [organization-id & options]
   (when (:debug @app-state) (debug "calling get-projects"))
   (request-handler :get-projects {:organization-id organization-id}))
@@ -323,7 +356,7 @@
                                                     (into #{} (mapv #(str/trim %) (:tags device)))
                                                     [])
                                  addresses        (into #{} (mapv #(:address %) (:ip_addresses device)))
-                                 network          (:network device)
+                                 ;network          (:network device)
                                  root-password    (:root_password device)
                                  state            (:state device)]
                              (conj acc {:id               id
@@ -376,7 +409,7 @@
                                  tags             (when-not (str/blank? (first (:tags device)))
                                                     (into #{} (mapv #(str/trim %) (:tags device))))
                                  addresses        (into #{} (mapv #(:address %) (:ip_addresses device)))
-                                 network          (:network device)
+                                 ;network          (:network device)
                                  root-password    (:root_password device)
                                  state            (:state device)]
                              (conj acc {:id               id
@@ -451,14 +484,32 @@
           (info device-record))))))
 
 
+(defn create-device-batch [project-id {:keys [facility tags plan operating_system distribute userdata count] :as args}]
+  (when (:debug @app-state)  (debug "calling create-devices-batch" project-id args))
+  (go
+        (let [response        (<! (request-handler
+                                 :create-devices-batch {:project-id project-id
+                                                        :batch {:batches 
+                                                                    [ {:facility         facility
+                                                                       :tags             tags
+                                                                       :plan             plan
+                                                                       :userdata         (or userdata "")
+                                                                       :facility_diversity_level (if distribute count 1)
+                                                                       :quantity (if distribute 1 count)
+                                                                       :operating_system operating_system}]}}))
+              devices (:body response)]
+          (when (:debug @app-state)  (debug "result create devices batch" devices))
+          response)
+          #_(info device-record)))
+
 
 (defn get-device-id [device-id & options]
   (when (:debug @app-state) (debug "calling get-device" device-id))
   (go
     (let [result (<! (request-handler :get-device {:device-id device-id}))]
-    (if (= (:status result) 200)
-      (-> result :body)
-      nil))))
+      (if (= (:status result) 200)
+        (-> result :body)
+        nil))))
 
 
 (defn get-device [organization-id device & options]
@@ -497,16 +548,16 @@
         :table (utils/print-table device)
         (utils/print-table device)))))
 
-(defn get-deviceid-prefix [organization-id prefix]
+(defn get-deviceid-prefix [project-id prefix]
   (when (:debug @app-state) (debug "calling project-exists?" prefix))
   (go
-    (let [devices (<! (get-devices-organization organization-id))
+    (let [devices (<! (get-devices-project project-id))
           device-ids (into #{} (mapv :id devices))
           device-selector  (utils/prefix-match prefix device-ids)]
       (when (:debug @app-state) (debug "device-selector" device-selector))
       (if (some? device-selector)
         device-selector
-        (js/Error. "Device" prefix "not found" )))))
+        (js/Error. (str "Device: " prefix " not found"))))))
 
 (defn- get-device-events [device-id & options]
   (when (:debug @app-state)  (debug "calling get-device-events " device-id))
@@ -613,9 +664,10 @@
 (defmethod api/device-exist? [:packet :organization] [_ project-or-organization & options] (device-exist-organization? (first options)))
 (defmethod api/device-exist? [:packet :project] [_ project-or-organization project-id name & options] (device-exist-project? project-id name ))
 (defmethod api/create-device :packet [_ project-id & options] (create-device project-id (first options)))
+(defmethod api/create-device-batch :packet [_ project-id & options] (create-device-batch project-id (first options)))
 (defmethod api/delete-device :packet [_ project-id device-id & options] (delete-device project-id device-id options))
 (defmethod api/print-device :packet [_ device-id & options] (print-device device-id (first options)))
-(defmethod api/get-deviceid-prefix :packet [_ organization-id prefix] (get-deviceid-prefix organization-id prefix))
+(defmethod api/get-deviceid-prefix :packet [_ project-id prefix] (get-deviceid-prefix project-id prefix))
 (defmethod api/get-device :packet   [_ organization-id device-id & options] (get-device organization-id device-id first options))
 (defmethod api/get-device-events :packet   [_ device-id & options] (get-device-events device-id first options))
 (defmethod api/print-device-events :packet   [_ device-id & options] (get-device-events device-id first options))
@@ -624,7 +676,7 @@
 (defmethod api/get-project-name :packet  [_ project-id] (get-project-name project-id))
 (defmethod api/get-project-id :packet [_ organization-id project-name] (get-project-id organization-id project-name))
 (defmethod api/gen-inventory :packet [_ organization-id project-name] (gen-inventory organization-id project-name))
-
+(defmethod api/get-ssh-keys :packet [_ & options] (get-ssh-keys))
 (def exports #js {})
 
 

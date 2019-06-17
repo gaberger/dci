@@ -1,0 +1,74 @@
+---
+organization_id: 60bdbe9f-10c2-4ac9-bc75-6fd635f52daa
+project_name: demo-cluster-1
+bootstrap_node: 147.75.107.215
+node_spec:
+  - replicas: 0
+    plan: baremetal_0
+    distribute: false
+    facilities:
+      - ewr1
+      - ams1
+      - sjc1
+    tags:
+      - load_balancer_controller
+    operating_system: ubuntu_16_04
+  - replicas: 0
+    plan: baremetal_0
+    facilities:
+      - ewr1
+    userdata: |
+      #!/bin/bash
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get -y update
+      apt install -y wget
+      wget https://github.com/containous/traefik/releases/download/v1.7.12/traefik_linux-amd64 -O /root/traefik
+      chmod u+x /root/traefik
+      cat > /lib/systemd/system/traefik.service <<EOF
+      [Unit]
+      Description=Load Balance Service.
+
+      [Service]
+      Type=simple
+      ExecStart=/root/traefik --configFile=/root/traefik-config.toml
+
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      systemctl start traefik.service
+
+      cat > /root/traefik-config.toml <<EOF
+      [global]
+      checkNewVersion = true
+      sendAnonymousUsage = false
+
+      [entryPoints]
+        [entryPoints.kube-api]
+          address = ":6443"
+
+      [log]
+      # Default: os.Stdout
+      filePath = "log/traefik.log"
+      # Default: "common"
+      #
+      # format = "common"
+
+      [accessLog]
+      # Optional
+      # Default: os.Stdout
+       filePath = "log/access.txt"
+      # Format is either "json" or "common".
+      # Default: "common"
+      # format = "common"
+      [api]
+      dashboard = true
+      # Optional
+      # entryPoint = "traefik"
+      # dashboard = false
+
+      [ping]
+      # entryPoint = "traefik"
+      EOF
+    tags:
+      - load-balancer
+    operating_system: ubuntu_16_04

@@ -1,6 +1,10 @@
 (ns dci.commands.dci-server
   (:require [commander]
             [util]
+            [taoensso.timbre :as timbre
+             :refer-macros [log  trace  debug  info  warn  error  fatal  report
+                            logf tracef debugf infof warnf errorf fatalf reportf
+                            spy get-env]]
             [dci.drivers.interfaces :as api]
             [dci.drivers.packet]
             [cljs.core.async :refer [<! >! timeout take! chan] :refer-macros [go go-loop]]
@@ -49,19 +53,19 @@
         (action (fn [hostname project-id cmd]
                   (p/try
                     (p/let [project-id  (cond
-                                        (some? (utils/get-env "PROJECT_ID")) (utils/get-env "PROJECT_ID")
-                                        (string? project-id)                 project-id
-                                        :else                                (.help cmd (fn [t] t)))
+                                          (some? (utils/get-env "PROJECT_ID")) (utils/get-env "PROJECT_ID")
+                                          (string? project-id)                 project-id
+                                          :else                                (.help cmd (fn [t] t)))
                           hostname'   (str hostname)
                           plan'       (or (.-plan cmd) "baremetal_0")
                           tags'       (or (.-tags cmd)  nil)
                           facilities' (or (.-facilities cmd) ["ewr1"])
                           os'         (or (.-os cmd) "ubuntu_16_04")
-                          args        {:hostname         hostname'
-                                       :plan             plan'
-                                       :facility         facilities'
-                                       :tags             tags'
-                                       :operating_system os'}]
+                            args        {:hostname         hostname'
+                                         :plan             plan'
+                                         :facility         facilities'
+                                         :tags             tags'
+                                         :operating_system os'}]
                       (api/create-device (keyword (.-provider program)) project-id args))
                     (p/catch js/Error e
                       (println e))))))
@@ -79,23 +83,24 @@
         (option "-F --force" "Force Delete")
         (action (fn [device-id cmd]
                   (p/try
-                    (p/let [organization-id (utils/get-env "ORGANIZATION_ID")
-                          device-id' (api/get-deviceid-prefix (keyword (.-provider program)) organization-id device-id)]
-                    (if (some? device-id')
+                    (p/let [project-id (utils/get-env "PROJECT_ID")
+                          device-id' (api/get-deviceid-prefix (keyword (.-provider program)) project-id device-id)]
+                    (when (some? device-id')
                       (if (.-force cmd)
                         (api/delete-device (keyword (.-provider program)) device-id')
                         (p/let [delete? (utils/prompts-delete cmd (str "Delete Device: " device-id'))]
                           (when delete?
-                            (api/delete-device (keyword (.-provider program)) device-id'))))))
+                            (api/delete-device (keyword (.-provider program)) device-id'))))
+                      ))
                     (p/catch js/Error e
-                      (println e))))))
+                      (error "Something went wrong with delete " e))))))
 
     (.. program
         (command "events <device-id>")
         (action (fn [device-id cmd]
                   (p/try
-                    (p/let [organization-id (utils/get-env "ORGANIZATION_ID")
-                            device-id' (api/get-deviceid-prefix (keyword (.-provider program)) organization-id device-id)]
+                    (p/let [project-id (utils/get-env "PROJECT_ID")
+                            device-id' (api/get-deviceid-prefix (keyword (.-provider program)) project-id device-id)]
                       (when (some? device-id')
                         (p/let [events (api/print-device-events (keyword (.-provider program)) device-id')]
                           (utils/print-json events))))

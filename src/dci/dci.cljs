@@ -60,18 +60,9 @@
       (command "server <command>" "Server operations")
       (command "cluster <command>" "Cluster operations")
       (command "platform <command>" "Platform operations")
-      (command "install <command>" "Install operations")
       (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet")
       (description "DataCenter \"Bare Metal Cloud\" Command Interface")))
 
-(defn handle-command-default [cmd]
-  (.on cmd "command:*" (fn [e]
-                         (when-not
-                             (contains?
-                              (into #{}
-                                    (keys (js->clj (.-_execs cmd))))
-                              (first e))
-                           (.help cmd)))))
 
 (defn main! []
   (utils/update-environment)
@@ -82,24 +73,24 @@
     
     (cond
       (every? env-keys #{"APIKEY" "ORGANIZATION_ID"}) (do
-                                                        (handle-command-default program)
+                                                        (utils/handle-command-default program)
                                                         (.parse program (.-argv js/process)))
 
       (contains? env-keys "ORGANIZATION_ID") (p/do
                                                (prompts-get-key program)
                                                (prompts-save-state)
-                                               (handle-command-default program)
+                                               (utils/handle-command-default program)
                                                (.parse program (.-argv js/process)))
       (contains? env-keys "APIKEY")          (p/do
                                                (prompts-get-org program)
                                                (prompts-save-state)
-                                               (handle-command-default program)
+                                               (utils/handle-command-default program)
                                                (.parse program (.-argv js/process)))
       :else                                  (p/do
                                                (prompts-get-key program)
                                                (prompts-get-org program)
                                                (prompts-save-state)
-                                               (handle-command-default program)
+                                               (utils/handle-command-default program)
                                                (.parse program (.-argv js/process))))
 
   ))

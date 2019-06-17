@@ -1,7 +1,5 @@
 (ns dci.commands.dci-facility
   (:require [commander]
-            [util]
-            [prompts]
             [dci.drivers.interfaces :as api]
             [dci.drivers.packet]
             [cljs.pprint :as pprint]

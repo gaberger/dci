@@ -8,6 +8,12 @@
             [cljs.core.async :refer [<! >! timeout take! chan] :refer-macros [go go-loop]]
             [cljs.test :refer-macros [deftest testing is run-tests async]]))
 
+
+(enable-console-print!)
+
+(when-not (utils/get-env "APIKEY")
+  (utils/update-environment))
+
 (assert (not (nil? (utils/get-env "APIKEY"))))
 (assert (not (nil? (utils/get-env "ORGANIZATION_ID"))))
 (assert (not (nil? (utils/get-env "PROJECT_ID"))))
@@ -100,3 +106,10 @@
                      (done)))))
 
 
+(deftest get-create-device-batch
+    (let [project-id (utils/get-env "PROJECT_ID")]
+      (async done
+             (p/let [batch (api/create-device-batch :packet (utils/get-env "PROJECT_ID") {:facility ["ewr1"] :tags ["test"] :plan "baremetal_0" :operating_system "ubuntu_16_04" :count 3 :distribute false})]
+               (println batch)
+               (is (= 201 (:status batch)))
+               (done)))))

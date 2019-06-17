@@ -63,8 +63,8 @@
                                 :exports-var dci.components.kubeone/exports}
 
                 :test {:target    :node-test
-                       :output-to "out/dci-test.js"
-                       :ns-regexp "command-test$"
+                       :output-to "out/packet-test.js"
+                       :ns-regexp "packet-test$"
                        :autorun   true}
                 ;;:server-test   {:target    :node-test
                 ;;                 :output-to "out/server-test.js"
