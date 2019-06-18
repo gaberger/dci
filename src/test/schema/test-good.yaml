@@ -1,0 +1,15 @@
+---
+organization_id: 60bdbe9f-10c2-4ac9-bc75-6fd635f52daa
+project_name: cluster-test-1
+bootstrap_node: 147.75.107.215
+node_spec:
+  - replicas: 0
+    plan: baremetal_0
+    distribute: false
+    facilities:
+      - ewr1
+      - ams1
+      - sjc1
+    tags:
+      - control-plane
+    operating_system: ubuntu_16_04

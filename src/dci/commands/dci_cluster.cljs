@@ -12,6 +12,7 @@
             [cljs.core.async :refer [<! >! timeout take! chan] :refer-macros [go go-loop]]
             [dci.drivers.interfaces :as api]
             [dci.drivers.packet]
+            [dci.schemas.core :as s]
             [dci.utils.core :as utils]
             [dci.state :refer [app-state]]))
 
@@ -72,20 +73,23 @@
     ;;]
     ;; TODO Change to batch and create project if it doesn't exist
     ;; TODO move loggic to components
-
+    
     (.. program
         (command "deploy <cluster-file>")
         (action (fn [cluster-file]
                   (when (.-debug program) (swap! app-state assoc :debug true))
-                  (p/try
-                    (p/let [cluster-spec (utils/read-cluster-file cluster-file)
-                            {:keys [organization_id project_name node_spec]} cluster-spec
-                            project-id (api/get-project-id (keyword (.-provider program)) organization_id project_name)]
-                      (if (some? project-id)
-                        (cluster-apply :packet project-id project_name node_spec)
-                        (error "Project doesn't exit")))
-                    (p/catch js/Error e
-                      (println "ERROR:" (js->clj e)))))))
+                    (let [cluster-spec (utils/read-cluster-file cluster-file)]
+                      (let [err (utils/valid-cluster-spec cluster-spec)]
+                        (if err
+                          (utils/error-and-exit "Cluster Validation Failure"))
+                          (p/try
+                            (p/let [{:keys [organization_id project_name node_spec]} cluster-spec
+                                    project-id (api/get-project-id (keyword (.-provider program)) organization_id project_name)]
+                              (if (some? project-id)
+                                (cluster-apply :packet project-id project_name node_spec)
+                                (error "Project doesn't exit")))
+                            (p/catch js/Error e
+                              (println "ERROR:" (js->clj e)))))))))
 
     (utils/handle-command-default program)
 

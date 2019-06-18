@@ -18,6 +18,8 @@
             [clojure.pprint :as pprint]
             [clojure.walk :refer [postwalk]]
             [clojure.string :as str]
+            [dci.schemas.core :as schema]
+            [schema.core :as s :include-macros true]
             [dci.state :refer [app-state]]))
 
 (def state-file (str/join "/" [(.homedir os) ".dci-state.edn"]))
@@ -88,8 +90,20 @@
 (defn read-cluster-file [file]
   (try
     (fnext (read-yaml (slurp file)))
-    (catch js/Object e
-       (js->clj e))))
+      (catch js/Object e
+        (js->clj e))))
+
+(defn valid-cluster-spec
+  "Checks cluster-spec against specification. Returns nil if good else returns error"
+  [m]
+  (assert map? m)
+  (debug "valid-cluster-spec " m)
+  (if-some [errors  (s/check dci.schemas.core/cluster-spec m)]
+    (do
+      (error "Validation Error ")
+      (println errors)
+      true)
+    false))
 
 (defn dump-object [obj]
   (println "###########")
@@ -226,6 +240,11 @@
       (do
         (error "Please install kubeone dependency in path")
         (.exit js/process 1)))))
+
+(defn error-and-exit [message]
+  (do 
+    (error message)
+    (.exit js/process 1)))
 
 (defn rotate-left [xs]
   (when (seq xs) (concat (rest xs) [(first xs)])))

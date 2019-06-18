@@ -1,8 +1,8 @@
-(ns dci.utils.macros
+#_(ns dci.utils.macros
   (:require [kitchen-async.promise :as p :require-macros [let loop recur]]
-            [commander]))
+            ))
 
-(defmacro dotimes*
+#_(defmacro dotimes*
     [bindings & body]
     (p/let [i (first bindings)
             n (second bindings)]
@@ -13,10 +13,10 @@
              (p/recur (inc ~i)))))))
 
 
-[{:options ["-D --debug" "Debug"]
+#_[{:options ["-D --debug" "Debug"]
   :version "0.0.3"}]
 
-(defmacro command
+#_(defmacro command
   [version description command-str bindings & body]
   (let [i (first bindings)
         n (second bindings)

@@ -3,14 +3,16 @@
  :dependencies [[martian-cljs-http "0.1.9"]
                 [martian-test "0.1.9"]
                 [me.raynes/fs "1.4.6"]
+                [cider/cider-nrepl "0.16.0"]
                 [clj-fuzzy "0.4.1"]
                 [cljs-node-io "1.1.2"]
+                [kitchen-async "0.1.0-SNAPSHOT"]
                 [binaryage/oops "0.7.0"]
                 [com.taoensso/timbre "4.10.0"]
                 [prismatic/schema  "1.1.10"]
                                         ; [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
                 [cljs-node-io "1.1.2"]]
- :deps         true
+ :deps         false
  :builds       {:dci           {:target    :node-script
                                 :output-to "target/dci.js"
                                 :release   {:compiler-options {:optimizations :simple}}
@@ -31,7 +33,7 @@
                                 :output-to "target/dci-facility.js"
                                 :release   {:compiler-options {:optimizations :simple}}
                                 :main      dci.commands.dci-facility/main!}
-                :cluster        {:target    :node-script
+                :cluster       {:target    :node-script
                                 :output-to "target/dci-cluster.js"
                                 :release   {:compiler-options {:optimizations :simple}}
                                 :main      dci.commands.dci-cluster/main!}
@@ -46,6 +48,9 @@
                 :driver-packet {:target      :node-library
                                 :output-to   "target/packet.js"
                                 :exports-var dci.drivers.packet/exports}
+                :schemas       {:target      :node-library
+                                :output-to   "target/schemas.js"
+                                :exports-var dci.schemas.core/exports}
                 :interfaces    {:target      :node-library
                                 :output-to   "target/interfaces.js"
                                 :exports-var dci.drivers.interfaces/exports}
@@ -61,11 +66,14 @@
                 :kubeone       {:target      :node-library
                                 :output-to   "target/kubeone.js"
                                 :exports-var dci.components.kubeone/exports}
-
-                :test {:target    :node-test
-                       :output-to "out/packet-test.js"
-                       :ns-regexp "packet-test$"
-                       :autorun   true}
+                :packet-test   {:target    :node-test
+                                :output-to "out/packet-test.js"
+                                :ns-regexp "packet-test$"
+                                :autorun   false}
+                :schema-test   {:target    :node-test
+                                :output-to "out/schema-test.js"
+                                :ns-regexp "schema-test$"
+                                :autorun   true}
                 ;;:server-test   {:target    :node-test
                 ;;                 :output-to "out/server-test.js"
                 ;;                :ns-regexp "-test$"
