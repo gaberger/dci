@@ -39,38 +39,30 @@
 
         (action (fn [service cluster-network service-subnet cmd]
                   #_(let [cp (proc/spawn "./dependencies/kubeone-linux" ["--help"] {})]
-                    (.on (.-stdout cp) "data" (fn [data] (println (.toString data))))
-                    (when (.-debug program) (swap! app-state assoc :debug true)))
+                      (.on (.-stdout cp) "data" (fn [data] (println (.toString data))))
+                      (when (.-debug program) (swap! app-state assoc :debug true)))
 
                   (p/let [_ (utils/set-env "PACKET_AUTH_TOKEN" (utils/get-env "APIKEY"))
                           _ (utils/set-env "PACKET_PROJECT_ID" (utils/get-env "PROJECT_ID"))
                           config  (kubeone/create-kubeone-config "packet" cluster-network service-subnet)
                           result (command/run-command
-                                  (goog.string.format "./dependencies/kubeone-linux install <(echo \"%s\") -b %s" config service))
+                                  (goog.string.format "./dependencies/kubeone-linux install <(echo \"%s\") -b %s" config service))]))))
 
-    (defn patch-deploy []
-    ;  (comment """ sed "s/__admission_ca_cert__/$(shell cat examples/ca-cert.pem|base64 -w0)/g" 
-		;     |sed "s/__admission_cert__/$(shell cat examples/admission-cert.pem|base64 -w0)/g" 
-    ;  |sed "s/__admission_key__/$(shell cat examples/admission-key.pem|base64 -w0)/g" """))/ca_
-      )
-
-    (utils/handle-command-default program) 
+    (utils/handle-command-default program)
 
 
     (.parse program (.-argv js/process))
+
     (cond
       (.-json program) (swap! app-state assoc :output :json)
       (.-edn program)  (swap! app-state assoc :output :edn)
-      :else            (swap! app-state assoc :output :table))
-
-    (when (.-debug program) (do
-                              (swap! app-state assoc :debug true)
-                              (js/console.log program)
-                              (pprint/pprint @app-state)))
-
-    (cond (= (.-args.length program) 0)
-          (.. program
-              (help #(clojure.string/replace % #"dci-service" "service"))))))
+      (.-dryrun program) (swap! app-state assoc :dryrun true)
+      (.-debug program) (do (swap! app-state assoc :debug true)
+                            (js/console.log program)
+                            (pprint/pprint @app-state))
+      (= (.-args.length program) 0) (.. program
+                                        (help #(clojure.string/replace % #"dci-cluster" "cluster")))
+      :else            (swap! app-state assoc :output :table))))
 
 (defn main! []
   (command-handler))

@@ -31,7 +31,7 @@
 ;;TODO CHeck for existing project and server liveness
     ;;TODO Create project if doesn't exist?/ in service deploy?
     ;;TODO Combine service/deploy with platform install?
-
+    
 
     (.. program
         (command "config <cluster-name> <cluster-network> <service-subnet>")
@@ -53,9 +53,9 @@
                       (p/let [result (command/run-command
                                       #_(goog.string.format "./dependencies/kubeone-linux install <(echo \"%s\") -b %s" config service)
                                       "kubeone" ["install" config])
-                                      ]
-                                (info "completed k8 install, check logs for errors")))))))
-   (.. program
+                              ]
+                        (info "completed k8 install, check logs for errors")))))))
+    (.. program
         (command "reset <config>")
         (option "-s --sshUsername [user]")
         (option "-k --sshprivKeyFile [key]")
@@ -69,23 +69,23 @@
                       (p/let [result (command/run-command
                                   ;;(goog.string.format "./dependencies/kubeone-linux reset <(echo \"%s\")" config service)
                                       "kubeone" ["reset" config])]
-                                (info "Completed k8 reset, check logs for errors")))))))
+                        (info "Completed k8 reset, check logs for errors")))))))
 
-        (utils/handle-command-default program)
+    (utils/handle-command-default program)
 
-        (.parse program (.-argv js/process))
-        (cond
-          (.-json program) (swap! app-state assoc :output :json)
-          (.-edn program)  (swap! app-state assoc :output :edn)
-          :else            (swap! app-state assoc :output :table))
+    (.parse program (.-argv js/process))
+    
+    (cond
+      (.-json program) (swap! app-state assoc :output :json)
+      (.-edn program)  (swap! app-state assoc :output :edn)
+      (.-dryrun program) (swap! app-state assoc :dryrun true)
+      (.-debug program) (do (swap! app-state assoc :debug true)
+                            (js/console.log program)
+                            (pprint/pprint @app-state))
+      (= (.-args.length program) 0) (.. program
+                                        (help #(clojure.string/replace % #"dci-platform-k8" "platform-k8")))
+      :else            (swap! app-state assoc :output :table))))
 
-        (when (.-debug program) (do
-                                  (swap! app-state assoc :debug true)
-                                  (pprint/pprint @app-state)))
-
-        (cond (= (.-args.length program) 0)
-              (.. program
-                  (help #(clojure.string/replace % #"dci-platform-k8" "platform-k8"))))))
 (defn main! []
   (utils/kubeone-exists?)
   (command-handler))

@@ -75,18 +75,17 @@
     (utils/handle-command-default program)
 
     (.parse program (.-argv js/process))
+
     (cond
       (.-json program) (swap! app-state assoc :output :json)
       (.-edn program)  (swap! app-state assoc :output :edn)
-      :else            (swap! app-state assoc :output :table))
-
-    (when (.-debug program) (do
-                              (swap! app-state assoc :debug true)
-                              (pprint/pprint @app-state)))
-
-    (cond (= (.-args.length program) 0)
-          (.. program
-              (help #(clojure.string/replace % #"dci-project" "project"))))))
+      (.-dryrun program) (swap! app-state assoc :dryrun true)
+      (.-debug program) (do (swap! app-state assoc :debug true)
+                            (js/console.log program)
+                            (pprint/pprint @app-state))
+      (= (.-args.length program) 0) (.. program
+                                        (help #(clojure.string/replace % #"dci-project" "project")))
+      :else            (swap! app-state assoc :output :table))))
 
 (defn main! []
   (command-handler))

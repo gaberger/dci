@@ -29,21 +29,20 @@
     (.. program
         (command "k8 <command>" "This is a k8 install"))
 
-    (utils/handle-command-default program) 
+    (utils/handle-command-default program)
 
     (.parse program (.-argv js/process))
-
+    
     (cond
       (.-json program) (swap! app-state assoc :output :json)
       (.-edn program)  (swap! app-state assoc :output :edn)
-      :else            (swap! app-state assoc :output :table))
-
-    (when (.-debug program)  (swap! app-state assoc :debug true)
-                                  (js/console.log program)
-                                  (pprint/pprint @app-state))
-    (cond (= (.-args.length program) 0)
-          (.. program
-              (help #(clojure.string/replace % #"dci-platform" "platform"))))))
+      (.-dryrun program) (swap! app-state assoc :dryrun true)
+      (.-debug program) (do (swap! app-state assoc :debug true)
+                            (js/console.log program)
+                            (pprint/pprint @app-state))
+      (= (.-args.length program) 0) (.. program
+                                        (help #(clojure.string/replace % #"dci-platform" "platform")))
+      :else            (swap! app-state assoc :output :table))))
 
 (defn main! []
   (command-handler))

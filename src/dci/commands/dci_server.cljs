@@ -56,11 +56,11 @@
                                           (some? (utils/get-env "PROJECT_ID")) (utils/get-env "PROJECT_ID")
                                           (string? project-id)                 project-id
                                           :else                                (.help cmd (fn [t] t)))
-                          hostname'   (str hostname)
-                          plan'       (or (.-plan cmd) "baremetal_0")
-                          tags'       (or (.-tags cmd)  nil)
-                          facilities' (or (.-facilities cmd) ["ewr1"])
-                          os'         (or (.-os cmd) "ubuntu_16_04")
+                            hostname'   (str hostname)
+                            plan'       (or (.-plan cmd) "baremetal_0")
+                            tags'       (or (.-tags cmd)  nil)
+                            facilities' (or (.-facilities cmd) ["ewr1"])
+                            os'         (or (.-os cmd) "ubuntu_16_04")
                             args        {:hostname         hostname'
                                          :plan             plan'
                                          :facility         facilities'
@@ -84,14 +84,13 @@
         (action (fn [device-id cmd]
                   (p/try
                     (p/let [project-id (utils/get-env "PROJECT_ID")
-                          device-id' (api/get-deviceid-prefix (keyword (.-provider program)) project-id device-id)]
-                    (when (some? device-id')
-                      (if (.-force cmd)
-                        (api/delete-device (keyword (.-provider program)) device-id')
-                        (p/let [delete? (utils/prompts-delete cmd (str "Delete Device: " device-id'))]
-                          (when delete?
-                            (api/delete-device (keyword (.-provider program)) device-id'))))
-                      ))
+                            device-id' (api/get-deviceid-prefix (keyword (.-provider program)) project-id device-id)]
+                      (when (some? device-id')
+                        (if (.-force cmd)
+                          (api/delete-device (keyword (.-provider program)) device-id')
+                          (p/let [delete? (utils/prompts-delete cmd (str "Delete Device: " device-id'))]
+                            (when delete?
+                              (api/delete-device (keyword (.-provider program)) device-id'))))))
                     (p/catch js/Error e
                       (error "Something went wrong with delete " e))))))
 
@@ -115,15 +114,13 @@
     (cond
       (.-json program) (swap! app-state assoc :output :json)
       (.-edn program)  (swap! app-state assoc :output :edn)
-      :else            (swap! app-state assoc :output :table))
-
-    (when (.-debug program) (do
-                              (swap! app-state assoc :debug true)
-                              (pprint/pprint @app-state)))
-
-    (cond (= (.-args.length program) 0)
-          (.. program
-              (help #(clojure.string/replace % #"dci-server" "server"))))))
+      (.-dryrun program) (swap! app-state assoc :dryrun true)
+      (.-debug program) (do (swap! app-state assoc :debug true)
+                            (js/console.log program)
+                            (pprint/pprint @app-state))
+      (= (.-args.length program) 0) (.. program
+                                        (help #(clojure.string/replace % #"dci-server" "server")))
+      :else            (swap! app-state assoc :output :table))))
 
 (defn main! []
   (command-handler))
