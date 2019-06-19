@@ -15,7 +15,7 @@
             [dci.utils.core :as utils]
             [dci.state :refer [app-state]]))
 
-(def module-version "0.0.1")
+(def module-version "0.0.5")
 
 
 (defn command-handler []

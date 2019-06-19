@@ -18,7 +18,7 @@
 
 (enable-console-print!)
 
-(def module-version "0.0.4")
+(def module-version "0.0.5")
 
 
 ;;TODO call verify-userdata

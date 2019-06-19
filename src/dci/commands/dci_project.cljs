@@ -17,7 +17,7 @@
 
 (enable-console-print!)
 
-(def module-version "0.0.4")
+(def module-version "0.0.5")
 
 (defn command-handler []
   (let [program (.. commander

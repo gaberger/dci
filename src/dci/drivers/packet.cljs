@@ -17,7 +17,7 @@
             [dci.utils.core :refer [log-error] :as utils]))
 
 (set! js/XMLHttpRequest XMLHttpRequest) ;; weird status response
-(def library-version "0.0.4")
+(def library-version "0.0.5")
 
 (def add-authentication-header
   {:name  ::add-authentication-header

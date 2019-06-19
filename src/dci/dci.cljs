@@ -10,6 +10,8 @@
             [dci.state :refer [app-state]]
             [clojure.string :as str]))
 
+(def module-version "0.0.5")
+
 (defn prompts-get-org [program]
   (p/let [response  (api/get-organizations (keyword (.-provider program)) false)
           orgs (-> response :body :organizations)
@@ -49,7 +51,6 @@
                  (utils/save-config)
                  #_(js/console.log (.-env js/process))))))))
 
-(def module-version "0.0.4")
 
 (defn command-handler []
   (.. commander

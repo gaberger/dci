@@ -16,7 +16,7 @@
 
 (enable-console-print!)
 
-(def module-version "0.0.4")
+(def module-version "0.0.5")
 
 
 ;(def kubeone-commands ["kubeone-linux" "install" "<(dci service install kubeone cluster-test-1 192.168.0.0/16 172.16.0.0.12)]")
