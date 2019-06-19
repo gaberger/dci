@@ -45,7 +45,7 @@
                                 :output-to "target/dci-platform-k8.js"
                                 :release   {:compiler-options {:optimizations :simple}}
                                 :main      dci.commands.dci-platform-k8/main!}
-                :driver-packet {:target      :node-library
+                :packet {:target      :node-library
                                 :output-to   "target/packet.js"
                                 :exports-var dci.drivers.packet/exports}
                 :schemas       {:target      :node-library

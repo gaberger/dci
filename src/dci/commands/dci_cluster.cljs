@@ -31,7 +31,12 @@
               (let [{:keys [replicas plan facilities tags operating_system distribute userdata]} node-set
                     f-devices    (filterv (fn [m] (let [tag-set (into #{} (:tags m))]
                                                     (contains? tag-set (first tags)))) devices)
-                    device-count (count f-devices)]
+                    device-count (count f-devices)
+                    make-host-names (fn [count]
+                                      (into []
+                                            (for [i (range count)
+                                                  :let [hostname (str project-name "-node-" i)]]
+                                              hostname)))]
                 #_(debug "Device count " device-count "Replica Requested" replicas)
                 (cond
                   (< device-count replicas) (do (info "Creating devices for " tags)
@@ -40,6 +45,7 @@
                                                  project-id {:facility facilities
                                                              :tags tags
                                                              :plan plan
+                                                             :hostnames (make-host-names (- replicas device-count))
                                                              :userdata userdata
                                                              :operating_system operating_system
                                                              :count (- replicas device-count)
@@ -53,6 +59,11 @@
                   :else                      (error "Something went wrong" {:device-count device-count :replicas replicas})))) node-spec))))
 
 
+(for [i (range 100)
+      :let [hostname (str "test-" i)]]
+  hostname)
+
+
 (defn command-handler []
   (let [program (.. commander
                     (version module-version)
@@ -60,6 +71,7 @@
                     (option "-D --debug" "Debug")
                     (option "-J --json" "Output to JSON")
                     (option "-E --edn" "Output to EDN")
+                    (option "-X --dryrun" "Dry run no execution")
                     (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet"))]
 
 
@@ -94,18 +106,17 @@
     (utils/handle-command-default program)
 
     (.parse program (.-argv js/process))
+
     (cond
       (.-json program) (swap! app-state assoc :output :json)
       (.-edn program)  (swap! app-state assoc :output :edn)
-      :else            (swap! app-state assoc :output :table))
-
-    (when (.-debug program) (swap! app-state assoc :debug true)
-          (js/console.log program)
-          (pprint/pprint @app-state))
-
-    (cond (= (.-args.length program) 0)
-          (.. program
-              (help #(clojure.string/replace % #"dci-cluster" "cluster"))))))
+      (.-dryrun program) (swap! app-state assoc :dryrun true)
+      (.-debug program) (do (swap! app-state assoc :debug true)
+                            (js/console.log program)
+                            (pprint/pprint @app-state))
+      (= (.-args.length program) 0) (.. program
+                                        (help #(clojure.string/replace % #"dci-cluster" "cluster")))
+      :else            (swap! app-state assoc :output :table))))
 
 (defn main! []
   (command-handler))

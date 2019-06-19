@@ -97,7 +97,6 @@
   "Checks cluster-spec against specification. Returns nil if good else returns error"
   [m]
   (assert map? m)
-  (debug "valid-cluster-spec " m)
   (if-some [errors  (s/check dci.schemas.core/cluster-spec m)]
     (do
       (error "Validation Error ")

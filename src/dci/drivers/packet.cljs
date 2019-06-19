@@ -38,6 +38,7 @@
                            {:route-name :get-facilities
                             :path-parts ["/facilities"]
                             :summary    "Get facilities listing"
+                            :query-schema {:per_page s/Int}
                             :method     :get}
                            {:route-name  :get-operating-systems
                             :path-parts ["/operating-systems"]
@@ -46,10 +47,12 @@
                            {:route-name :get-organizations
                             :path-parts ["/organizations"]
                             :summary    "Get Organization listing"
+                            :query-schema {:per_page s/Int}
                             :method     :get}
                            {:route-name  :get-projects
                             :path-parts  ["/organizations/" :organization-id "/projects"]
                             :summary     "Get projects listing"
+                            :query-schema {:per_page s/Int}
                             :method      :get
                             :path-schema {:organization-id s/Str}}
                            {:route-name  :get-project
@@ -61,9 +64,11 @@
                             :path-parts  ["/projects/" :project-id "/devices"]
                             :summary     "Get all devices of project"
                             :method      :get
+                            :query-schema {:per_page s/Int}
                             :path-schema {:project-id s/Str}}
                            {:route-name  :get-devices-organization
                             :path-parts  ["/organizations/" :organization-id "/devices"]
+                            :query-schema {:per_page s/Int}
                             :summary     "Get all devices of organization"
                             :method      :get
                             :path-schema {:organization-id s/Str}}
@@ -91,14 +96,15 @@
                            :method      :post
                            :produces    ["application/json"]
                            :consumes    ["application/json"]
-                           :body-schema {:batch {:batches [ {(s/optional-key :hostname)     (s/maybe s/Str) 
-                                                             :facility         [s/Str]
-                                                             :tags             [(s/maybe s/Str)]
-                                                             :userdata         (s/maybe s/Str)
-                                                             :plan             s/Str
+                           :body-schema {:batch {:batches [ {(s/optional-key :hostname) (s/maybe s/Str) 
+                                                             :facility                  [s/Str]
+                                                             :tags                      [(s/maybe s/Str)]
+                                                             :userdata                  (s/maybe s/Str)
+                                                             :plan                      s/Str
+                                                             :hostnames                 [s/Str]
                                                              :facility_diversity_level  (s/maybe s/Int)
-                                                             :quantity (s/maybe s/Int)
-                                                             :operating_system s/Str}]}}} 
+                                                             :quantity                  (s/maybe s/Int)
+                                                             :operating_system          s/Str}]}}} 
                            
                            {:route-name  :create-project
                             :path-parts  ["/organizations/" :organization-id "/projects"]
@@ -146,16 +152,19 @@
 
 (defn request-handler
   ([k path-m body]
-   (when (:debug @app-state) (debug "read-request" k path-m body))
+   (when (:debug @app-state) (debug "request-handler" k path-m body))
    (go
-     (try
-       (let [m      (bootstrap-packet-cljs)
-             _      (when (:debug @app-state)
-                      (debug (martian/request-for m (merge path-m {::martian/body body}))))
-             response (<! (martian/response-for m k (merge path-m {::martian/body body})))]
-         (response-handler response))
-     (catch js/Error e
-       (error "Request Error" path-m body e)))))
+     (let [m             (bootstrap-packet-cljs)
+           request-model (martian/request-for m k (merge path-m {::martian/body body}))]
+       (when (:debug @app-state)
+         (debug request-model))
+       (if-not (and (:dryrun @app-state) (= (:method request-model) :post))
+         (try
+           (let [response (<! (martian/response-for m k (merge path-m {::martian/body body})))]
+             (response-handler response))
+           (catch js/Error e
+             (error "Request Error" path-m body e)))
+         (info "Ran dry-run" request-model)))))
   ([k path-m]
    (request-handler k path-m nil))
   ([k]
@@ -181,7 +190,7 @@
 
 (defn- get-organizations []
   (when (:debug @app-state) (debug "calling get-organizations"))
-  (request-handler :get-organizations))
+  (request-handler :get-organizations {:per_page 1000}))
 
 (defn- print-organizations []
   (go
@@ -204,7 +213,7 @@
 
 (defn- get-facilities []
   (when (:debug @app-state) (debug "calling get-facilities"))
-  (request-handler :get-facilities))
+  (request-handler :get-facilities {:per_page 1000}))
 
 (defn- print-facilities []
   (go
@@ -237,7 +246,7 @@
 (defn project-exist-name? [{:keys [organization-id name]}]
   (when (:debug @app-state) (debug "calling project-exists?" name))
   (go
-    (let [result    (<! (request-handler :get-projects {:organization-id organization-id}))
+    (let [result    (<! (request-handler :get-projects {:organization-id organization-id :per_page 1000}))
           projects  (-> result :body :projects)
           project-m (filterv #(= (:name %) name) projects)]
       (if-not (empty? project-m)
@@ -261,7 +270,7 @@
 
 (defn- get-projects [organization-id & options]
   (when (:debug @app-state) (debug "calling get-projects"))
-  (request-handler :get-projects {:organization-id organization-id}))
+  (request-handler :get-projects {:organization-id organization-id :per_page 1000}))
 
 (defn- print-projects [organization-id & options]
   #_{:pre [(assert (and (not (nil? (utils/get-env "ORGANIZATION_ID")))
@@ -311,7 +320,7 @@
         (let [project-payload {:organization-id organization-id
                                :project {:name project-name}}
               project-payload-merge (if-some [options (first options)]
-                                      (spy (update-in project-payload [:project] conj options))
+                                      (update-in project-payload [:project] conj options)
                                       project-payload
                                       )
               project        (<! (request-handler :create-project project-payload-merge))
@@ -326,7 +335,7 @@
   (go
     (let [project (<! (request-handler :delete-project {:project-id project-id}))]
       (condp = (:status project)
-        204 (error "Project" project-id "deleted")
+        204 (info "Project" project-id "deleted")
         404 (error "Project" project-id "doesn't exist")
         422 (error "Project" project-id (first (:errors (:body project))))
         (error "Error deleting project" project-id)))))
@@ -334,7 +343,7 @@
 (defn get-devices-organization [organization-id & options]
   (when (:debug @app-state) (debug "calling get-devices-organization" organization-id))
   (go
-    (let [result (<! (request-handler :get-devices-organization {:organization-id organization-id}))]
+    (let [result (<! (request-handler :get-devices-organization {:organization-id organization-id :per_page 1000}))]
       (when (:debug @app-state) (debug "get-devices-organization result" result))
       (if (= (:status result) 200)
         (-> result :body :devices)
@@ -385,7 +394,7 @@
   (when (:debug @app-state) (debug "calling get-devices-project" project-id))
   (go
     (try
-      (let [result (<! (request-handler :get-devices-project {:project-id project-id}))]
+      (let [result (<! (request-handler :get-devices-project {:project-id project-id :per_page 1000}))]
         (if (= (:status result) 200)
           (let [devices (-> result :body :devices)]
                 (if-not (empty? (:filter (first options)))
@@ -484,7 +493,7 @@
           (info device-record))))))
 
 
-(defn create-device-batch [project-id {:keys [facility tags plan operating_system distribute userdata count] :as args}]
+(defn create-device-batch [project-id {:keys [facility tags hostnames plan operating_system distribute userdata count] :as args}]
   (when (:debug @app-state)  (debug "calling create-devices-batch" project-id args))
   (go
         (let [response        (<! (request-handler
@@ -493,6 +502,7 @@
                                                                     [ {:facility         facility
                                                                        :tags             tags
                                                                        :plan             plan
+                                                                       :hostnames        hostnames
                                                                        :userdata         (or userdata "")
                                                                        :facility_diversity_level (if distribute count 1)
                                                                        :quantity (if distribute 1 count)
@@ -582,7 +592,7 @@
   [organization-id project-name]
   (when (:debug @app-state)  (debug "calling get-project-id" project-name))
   (go
-    (let [result      (<! (request-handler :get-projects {:organization-id organization-id}))
+    (let [result      (<! (request-handler :get-projects {:organization-id organization-id :per_page 1000}))
           projects    (-> result :body :projects)
           sel-project (filterv #(= (:name %) project-name) projects)
           project-id  (-> sel-project first :id)]
