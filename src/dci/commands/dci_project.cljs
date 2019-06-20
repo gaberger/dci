@@ -1,7 +1,5 @@
 (ns dci.commands.dci-project
   (:require [commander]
-            [util]
-            [prompts]
             [taoensso.timbre :as timbre
              :refer-macros [log  trace  debug  info  warn  error  fatal  report
                             logf tracef debugf infof warnf errorf fatalf reportf

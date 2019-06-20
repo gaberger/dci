@@ -70,14 +70,6 @@
                     (p/catch js/Error e
                       (println e))))))
 
-      ;(.. program
-      ;  (command "gen-inventory <service-name>")
-      ;  (action (fn [service-name cmd]
-      ;            (go
-      ;              (let [organization-id (utils/get-env "ORGANIZATION_ID")]
-      ;                (api/gen-inventory (keyword (.-provider program)) organization-id service-name))))))
-
-
     (.. program
         (command "delete <device-id>")
         (option "-F --force" "Force Delete")

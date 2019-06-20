@@ -32,7 +32,7 @@
     (utils/handle-command-default program)
 
     (.parse program (.-argv js/process))
-(cond
+    (cond
       (.-json program) (swap! app-state assoc :output :json)
       (.-edn program)  (swap! app-state assoc :output :edn)
       (.-dryrun program) (swap! app-state assoc :dryrun true)

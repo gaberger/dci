@@ -13,67 +13,67 @@
                                         ; [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
                 [cljs-node-io "1.1.2"]]
  :deps         false
- :builds       {:dci           {:target    :node-script
-                                :output-to "target/dci.js"
-                                :release   {:compiler-options {:optimizations :simple}}
-                                :main      dci.dci/main!}
-                :server        {:target    :node-script
-                                :output-to "target/dci-server.js"
-                                :release   {:compiler-options {:optimizations :simple}}
-                                :main      dci.commands.dci-server/main!}
-                :project       {:target    :node-script
-                                :output-to "target/dci-project.js"
-                                :release   {:compiler-options {:optimizations :simple}}
-                                :main      dci.commands.dci-project/main!}
-                :organization  {:target    :node-script
-                                :output-to "target/dci-organization.js"
-                                :release   {:compiler-options {:optimizations :simple}}
-                                :main      dci.commands.dci-organization/main!}
-                :facility      {:target    :node-script
-                                :output-to "target/dci-facility.js"
-                                :release   {:compiler-options {:optimizations :simple}}
-                                :main      dci.commands.dci-facility/main!}
-                :cluster       {:target    :node-script
-                                :output-to "target/dci-cluster.js"
-                                :release   {:compiler-options {:optimizations :simple}}
-                                :main      dci.commands.dci-cluster/main!}
-                :platform      {:target    :node-script
-                                :output-to "target/dci-platform.js"
-                                :release   {:compiler-options {:optimizations :simple}}
-                                :main      dci.commands.dci-platform/main!}
-                :platform-k8   {:target    :node-script
-                                :output-to "target/dci-platform-k8.js"
-                                :release   {:compiler-options {:optimizations :simple}}
-                                :main      dci.commands.dci-platform-k8/main!}
-                :packet {:target      :node-library
-                                :output-to   "target/packet.js"
-                                :exports-var dci.drivers.packet/exports}
-                :schemas       {:target      :node-library
-                                :output-to   "target/schemas.js"
-                                :exports-var dci.schemas.core/exports}
-                :interfaces    {:target      :node-library
-                                :output-to   "target/interfaces.js"
-                                :exports-var dci.drivers.interfaces/exports}
-                :state         {:target    :node-library
-                                :output-to "target/state.js"
-                                :exports   {:app-state dci.state/app-state}}
-                :utils         {:target      :node-library
-                                :output-to   "target/utils.js"
-                                :exports-var dci.utils.core/exports}
-                :command       {:target      :node-library
-                                :output-to   "target/command.js"
-                                :exports-var dci.utils.command/exports}
-                :kubeone       {:target      :node-library
-                                :output-to   "target/kubeone.js"
-                                :exports-var dci.components.kubeone/exports}
-                :packet-test   {:target    :node-test
-                                :output-to "out/packet-test.js"
-                                :ns-regexp "packet-test$"
-                                :autorun   false}
-                :schema-test   {:target    :node-test
-                                :output-to "out/schema-test.js"
-                                :ns-regexp "schema-test$"
-                                :autorun   true}
+ :builds       {:dci          {:target    :node-script
+                               :output-to "target/dci.js"
+                               :release   {:compiler-options {:optimizations :simple}}
+                               :main      dci.dci/main!}
+                :server       {:target    :node-script
+                               :output-to "target/dci-server.js"
+                               :release   {:compiler-options {:optimizations :simple}}
+                               :main      dci.commands.dci-server/main!}
+                :project      {:target    :node-script
+                               :output-to "target/dci-project.js"
+                               :release   {:compiler-options {:optimizations :simple}}
+                               :main      dci.commands.dci-project/main!}
+                :organization {:target    :node-script
+                               :output-to "target/dci-organization.js"
+                               :release   {:compiler-options {:optimizations :simple}}
+                               :main      dci.commands.dci-organization/main!}
+                :facility     {:target    :node-script
+                               :output-to "target/dci-facility.js"
+                               :release   {:compiler-options {:optimizations :simple}}
+                               :main      dci.commands.dci-facility/main!}
+                :cluster      {:target    :node-script
+                               :output-to "target/dci-cluster.js"
+                               :release   {:compiler-options {:optimizations :simple}}
+                               :main      dci.commands.dci-cluster/main!}
+                :platform     {:target    :node-script
+                               :output-to "target/dci-platform.js"
+                               :release   {:compiler-options {:optimizations :simple}}
+                               :main      dci.commands.dci-platform/main!}
+                :platform-k8  {:target    :node-script
+                               :output-to "target/dci-platform-k8.js"
+                               :release   {:compiler-options {:optimizations :simple}}
+                               :main      dci.commands.dci-platform-k8/main!}
+                :packet       {:target      :node-library
+                               :output-to   "target/packet.js"
+                               :exports-var dci.drivers.packet/exports}
+                :schemas      {:target      :node-library
+                               :output-to   "target/schemas.js"
+                               :exports-var dci.schemas.core/exports}
+                :interfaces   {:target      :node-library
+                               :output-to   "target/interfaces.js"
+                               :exports-var dci.drivers.interfaces/exports}
+                :state        {:target    :node-library
+                               :output-to "target/state.js"
+                               :exports   {:app-state dci.state/app-state}}
+                :utils        {:target      :node-library
+                               :output-to   "target/utils.js"
+                               :exports-var dci.utils.core/exports}
+                :command      {:target      :node-library
+                               :output-to   "target/command.js"
+                               :exports-var dci.utils.command/exports}
+                :kubeone      {:target      :node-library
+                               :output-to   "target/kubeone.js"
+                               :exports-var dci.components.kubeone/exports}
+                :packet-test  {:target    :node-test
+                               :output-to "out/packet-test.js"
+                               :ns-regexp "packet-test$"
+                               :autorun   false}
+                :schema-test  {:target    :node-test
+                               :output-to "out/schema-test.js"
+                               :ns-regexp "schema-test$"
+                               :autorun   true}
                 ;;:server-test   {:target    :node-test
                 ;;                 :output-to "out/server-test.js"
                 ;;                :ns-regexp "-test$"

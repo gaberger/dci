@@ -45,7 +45,8 @@
                                                  project-id {:facility facilities
                                                              :tags tags
                                                              :plan plan
-                                                             :hostnames (make-host-names (- replicas device-count))
+                                                             ;:hostnames (make-host-names (- replicas device-count))
+                                                             :hostname  (str project-name "-node-{{index}}")
                                                              :userdata userdata
                                                              :operating_system operating_system
                                                              :count (- replicas device-count)

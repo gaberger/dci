@@ -1,17 +1,11 @@
 (ns dci.commands.dci-platform
   (:require [commander]
-            [util]
             [cljs.pprint :as pprint]
             [clojure.string :as str]
-            [kitchen-async.promise :as p]
-            [kitchen-async.promise.from-channel]
             [taoensso.timbre :as timbre
              :refer-macros [log  trace  debug  info  warn  error  fatal  report
                             logf tracef debugf infof warnf errorf fatalf reportf
                             spy get-env]]
-            [cljs.core.async :refer [<! >! timeout take! chan] :refer-macros [go go-loop]]
-            [dci.drivers.interfaces :as api]
-            [dci.drivers.packet]
             [dci.utils.core :as utils]
             [dci.state :refer [app-state]]))
 

@@ -96,12 +96,11 @@
                            :method      :post
                            :produces    ["application/json"]
                            :consumes    ["application/json"]
-                           :body-schema {:batch {:batches [ {(s/optional-key :hostname) (s/maybe s/Str) 
-                                                             :facility                  [s/Str]
+                           :body-schema {:batch {:batches [ { :facility                  [s/Str]
                                                              :tags                      [(s/maybe s/Str)]
                                                              :userdata                  (s/maybe s/Str)
                                                              :plan                      s/Str
-                                                             :hostnames                 [s/Str]
+                                                             :hostname                  s/Str
                                                              :facility_diversity_level  (s/maybe s/Int)
                                                              :quantity                  (s/maybe s/Int)
                                                              :operating_system          s/Str}]}}} 
@@ -493,7 +492,7 @@
           (info device-record))))))
 
 
-(defn create-device-batch [project-id {:keys [facility tags hostnames plan operating_system distribute userdata count] :as args}]
+(defn create-device-batch [project-id {:keys [facility tags hostname plan operating_system distribute userdata count] :as args}]
   (when (:debug @app-state)  (debug "calling create-devices-batch" project-id args))
   (go
         (let [response        (<! (request-handler
@@ -502,10 +501,10 @@
                                                                     [ {:facility         facility
                                                                        :tags             tags
                                                                        :plan             plan
-                                                                       :hostnames        hostnames
+                                                                       :hostname         hostname
                                                                        :userdata         (or userdata "")
                                                                        :facility_diversity_level (if distribute count 1)
-                                                                       :quantity (if distribute 1 count)
+                                                                       :quantity count
                                                                        :operating_system operating_system}]}}))
               devices (:body response)]
           (when (:debug @app-state)  (debug "result create devices batch" devices))
