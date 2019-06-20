@@ -19,6 +19,7 @@
 
 (def module-version "0.0.5")
 
+
 (defn command-handler []
   (let [program (.. commander
                     (version module-version)
@@ -28,10 +29,9 @@
                     (option "-E --edn" "Output to EDN")
                     (option "-P --provider <provider>" "Provider"  #"(?i)(packet|softlayer)$" "packet"))]
 ;;TODO CHeck for existing project and server liveness
-    ;;TODO Create project if doesn't exist?/ in service deploy?
-    ;;TODO Combine service/deploy with platform install?
-
-
+;;TODO Create project if doesn't exist?/ in service deploy?
+;;TODO Combine service/deploy with platform install?
+    
     (.. program
         (command "config <cluster-name> <cluster-network> <service-subnet>")
         (action (fn [service cluster-network service-subnet cmd]
@@ -45,29 +45,23 @@
         (action (fn [config cmd]
                   (utils/set-env "PACKET_AUTH_TOKEN" (utils/get-env "APIKEY"))
                   (utils/set-env "PACKET_PROJECT_ID" (utils/get-env "PROJECT_ID"))
-
-                  (p/let  [install? (utils/prompts-delete cmd (str "Continue with the following config:" config))]
+                  (p/let [install? (utils/prompts-delete cmd (str "Continue with the following config:" config))]
                     (when install?
                       (info "Installing k8 platform")
-                      (command/run-command
-                       #_(goog.string.format "./dependencies/kubeone-linux install <(echo \"%s\") -b %s" config service)
-                       "kubeone" ["install" config])
+                      (command/run-command "kubeone" ["install" config])
                       (info "completed k8 install, check logs for errors"))))))
     (.. program
         (command "reset <config>")
         (option "-s --sshUsername [user]")
         (option "-k --sshprivKeyFile [key]")
         (action (fn [config cmd]
-                  (p/let [_ (utils/set-env "PACKET_AUTH_TOKEN" (utils/get-env "APIKEY"))
-                          _ (utils/set-env "PACKET_PROJECT_ID" (utils/get-env "PROJECT_ID"))
-                          ;config  (kubeone/create-kubeone-config "packet" service cluster-network service-subnet )
-                          reset? (utils/prompts-delete cmd (str "Reset the following config:" config))]
+                  (utils/set-env "PACKET_AUTH_TOKEN" (utils/get-env "APIKEY"))
+                  (utils/set-env "PACKET_PROJECT_ID" (utils/get-env "PROJECT_ID"))
+                  (p/let [reset? (utils/prompts-delete cmd (str "Reset the following config:" config))]
                     (when reset?
                       (info "Deleting k8 platform")
-                      (p/let [result (command/run-command
-                                  ;;(goog.string.format "./dependencies/kubeone-linux reset <(echo \"%s\")" config service)
-                                      "kubeone" ["reset" config])]
-                        (info "Completed k8 reset, check logs for errors")))))))
+                      (command/run-command "kubeone" ["reset" config])
+                      (info "Completed k8 reset, check logs for errors"))))))
 
     (utils/handle-command-default program)
 
